@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include "../includes/connections.h"
+
 #define MAXBUF 1024
 #define MAXQUEUE 20
 
