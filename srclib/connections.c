@@ -39,3 +39,17 @@ int tcp_listen(char* if_addr, int port){
     }
     return sockfd;
 }
+
+int accept_connection(int listen_fd, struct sockaddr* client_sock, socklen_t* clilen){
+    /*int clientfd;
+    if((clientfd = accept(listen_fd, client_sock, clilen)) == -1){
+        //TODO
+    }
+    return client_fd;*/
+
+    return accept(listen_fd, client_sock, clilen));
+}
+
+int close_connection(int fd){
+    return close(fd);
+}
