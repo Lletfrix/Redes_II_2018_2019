@@ -23,7 +23,7 @@ int tcp_listen(char* if_addr, int port){
     }
 
     /*Inicializamos Socket*/
-    bzero(&sock, sizeof(self));
+    bzero(&sock, sizeof(sock));
     sock.sin_family = AF_INET;
     sock.sin_port = htons(port);
     if(inet_aton(if_addr, &(sock.sin_addr.s_addr)) == 0){
