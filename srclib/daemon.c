@@ -1,10 +1,11 @@
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <stdlib.h>
+#include "../includes/daemon.h"
 
-#include "../includes/daemon.h">
-
-int demonizar(char *service){
+int demonizar(const char *service){
 
     switch (fork()) {
         case -1:
@@ -22,10 +23,10 @@ int demonizar(char *service){
     if(!chdir("/")){
         //TODO: Handle this
     };
-    int max_fd = getdtablezsize();
-    for(int i = 0; i < max_fd; ++i){
+    int n_fd = getdtablesize();
+    for(int i = 0; i < n_fd; ++i){
         close(i);
     }
-    openlog(NULL, LOG_PID, LOG_DAEMON);
+    openlog(service, LOG_PID, LOG_DAEMON);
     return 0;
 }
