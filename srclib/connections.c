@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/socket.h>
 #include <resolv.h>
 #include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/socket.h>
 
 #include "../includes/connections.h"
 
@@ -26,7 +26,7 @@ int tcp_listen(char* if_addr, int port){
     bzero(&sock, sizeof(sock));
     sock.sin_family = AF_INET;
     sock.sin_port = htons(port);
-    if(inet_aton(if_addr, &(sock.sin_addr.s_addr)) == 0){
+    if(inet_aton(if_addr, &(sock.sin_addr)) == 0){
         //TODO
     }
 
@@ -49,7 +49,7 @@ int accept_connection(int listen_fd, struct sockaddr* client_sock, socklen_t* cl
     }
     return client_fd;*/
 
-    return accept(listen_fd, client_sock, clilen));
+    return accept(listen_fd, client_sock, clilen);
 }
 
 int close_connection(int fd){
