@@ -3,15 +3,23 @@ CC := gcc
 CFLAGS := -g -Wall
 ########################################################
 INCDIR := ../includes
-OBJECTS := connections.o
+LIBDIR := ../lib
+LIBS := my_lib.a
+OBJECTS := connections.o daemon.o
 #######################################################
 
-all: $(OBJECTS)
+all: $(LIBS)
 
-connections.o: connections.c $(INCDIR)/connections.h
+my_lib.a: $(OBJECTS)
+	ar rcs $(LIBDIR)/$@ $?
+
+connections.o: connections.c
 	$(CC) $(CFLAGS) -c $?
 
-tester: tester.o connections.o
+daemon.o: daemon.c
+	$(CC) $(CFLAGS) -c $?
+
+tester: tester.o $(LIBDIR)/$(LIBS)
 	$(CC) $(CFLAGS) -o tester $?
 
 tester.o: tester.c
