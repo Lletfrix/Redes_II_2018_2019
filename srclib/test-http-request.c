@@ -13,7 +13,7 @@
 
 int main(void){
     char ip[] = "127.0.0.1";
-    int port = 80;
+    int port = 5001;
     int sockfd, clientfd;
     struct sockaddr_in client;
     socklen_t addrlen = sizeof(client);
