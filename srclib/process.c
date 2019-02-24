@@ -20,25 +20,29 @@
 #define MAXRES 4096
 #define MAXEXT 10
 #define MAXTYPE 50
+#define MAXAUX 4096
+#define MAXRESPONSE 999999999
 
 /* CONFIG FILE*/
 #define ABSDIR "/mnt/c/Users/Sergamar/Desktop/Uni/RedesII/www"
 #define SVRNAME "MyServer"
 
-char* get_response(char* path, struct phr_header* headers, size_t num_headers);
+int get_response(char* path, struct phr_header* headers, size_t num_headers, char** response);
 char* post_response(char* path, struct phr_header* headers, size_t num_headers);
 char* options_response(char* path, struct phr_header* headers, size_t num_headers);
 char* bad_request_response();
 char* not_found_response();
-char* gmt_time_http();
-char* general_headers();
-char* last_modified_http(char* path);
+int gmt_time_http(char** res, int tam);
+int general_headers(char** res);
+int last_modified_http(char* path, char** res, int tam);
+int get_type(char* ext, char** res);
 
 int process_http(int clientfd){
     const char *method, *path;
     int len, pret, minor_version;
     size_t prevbuflen = 0, method_len, path_len, num_headers;
     char buf[MAXBUF], method_aux[MAXMETH], path_aux[MAXPATH], res[MAXRES];
+    char response[MAXRESPONSE];
     struct phr_header headers[MAXHEADERS];
     len = recv(clientfd, buf, MAXBUF, 0);
     printf("%s\n", buf);
@@ -52,7 +56,8 @@ int process_http(int clientfd){
     sprintf(method_aux, "%.*s", (int)method_len, method);
     sprintf(path_aux, "%.*s", (int)path_len, path);
     /*sprintf(ext, "%s", strrchr(path_aux, '.'));*/
-
+    get_response(path, headers, num_headers, &response);
+    printf("%s", response);
     /*if(!strcmp(method_aux, "GET")){
         res = get_response(path, headers, num_headers);
     }
@@ -79,74 +84,74 @@ int process_http(int clientfd){
     return 0;
 }
 
-char* gmt_time_http(){
-    char buf[MAXTIME];
+int gmt_time_http(char** res, int tam){
     time_t act = time(0);
     struct tm tm = *gmtime(&act);
-    strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S %Z", &tm);
-    return buf;
+    strftime(*res, tam, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+    return 1;
 }
 
-char* general_headers(){
-    char buf[MAXBUF];
-    strcat(buf, "Date: ");
-    strcat(buf, gmt_time_http());
-    strcat(buf, "\r\n");
-    strcat(buf, "Server: ");
-    strcat(buf, SVRNAME);
-    strcat(buf, "\r\n");
-    return buf;
+int general_headers(char** res){
+    char aux[MAXAUX];
+    strcat(*res, "Date: ");
+    gmt_time_http(&aux, MAXAUX);
+    strcat(*res, aux);
+    strcat(*res, "\r\n");
+    strcat(*res, "Server: ");
+    strcat(*res, SVRNAME);
+    strcat(*res, "\r\n");
+    return 1;
 }
 
-char* last_modified_http(char* path){
-    char buf[MAXTIME];
+int last_modified_http(char* path, char** res, int tam){
     struct tm tm;
     struct stat atrib;
     stat(path, &atrib);
     tm = *gmtime(&(atrib.st_mtime));
-    strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S %Z", &tm);
-    return buf;
+    strftime(*res, tam, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+    return 1;
 }
 
-char* get_type(char* ext){
-    char type[MAXTYPE];
+int get_type(char* ext, char** res){
     if(strcmp(ext, ".txt")){
-        strcpy(type, "text/plain");
+        strcpy(*res, "text/plain");
+        return 1;
     }
     if(strcmp(ext, ".html") || strcmp(ext, ".htm")){
-        strcpy(type, "text/html");
+        strcpy(*res, "text/html");
+        return 1;
     }
     if(strcmp(ext, ".gif")){
-        strcpy(type, "image/gif");
+        strcpy(*res, "image/gif");
+        return 1;
     }
     if(strcmp(ext, ".jpg") || strcmp(ext, ".jpeg")){
-        strcpy(type, "image/jpeg");
+        strcpy(*res, "image/jpeg");
+        return 1;
     }
     if(strcmp(ext, ".mpg") || strcmp(ext, ".mpeg")){
-        strcpy(type, "image/mpeg");
+        strcpy(*res, "image/mpeg");
+        return 1;
     }
     if(strcmp(ext, ".doc") || strcmp(ext, ".docx")){
-        strcpy(type, "application/msword");
+        strcpy(*res, "application/msword");
+        return 1;
     }
     if(strcmp(ext, ".pdf")){
-        strcpy(type, "application/pdf");
+        strcpy(*res, "application/pdf");
+        return 1;
     }
-    else{
-        type = NULL;
-    }
-    return type;
+    return 0;
 }
 
-char* get_response(char* path, struct phr_header* headers, size_t num_headers){
+int get_response(char* path, struct phr_header* headers, size_t num_headers, char** response){
     FILE* fp;
-    char* response;
     int size;
     char buf[MAXBUF], abspath[MAXPATH], content[MAXFILE], sizestr[MAXSIZE], ext[MAXEXT];
-    char type[MAXTYPE];
+    char type[MAXTYPE], aux[MAXAUX];
     strcat(abspath, ABSDIR);
     strcat(abspath, path);
-    type = get_type(ext);
-    if(!type){
+    if(!get_type(ext, &type)){
         /*return not_implemented_response()*/
     }
     fp = fopen(abspath, "r");
@@ -156,18 +161,20 @@ char* get_response(char* path, struct phr_header* headers, size_t num_headers){
     size = read(fp, content, MAXFILE);
     strcat(response, "HTTP/1.1 200 OK\r\n");
     /*HEADERS*/
-    strcat(response, general_headers());
-    strcat(response, "Last-Modified: ");
-    strcat(response, last_modified_http(abspath));
-    strcat(response, "\r\n");
+    general_headers(&aux);
+    strcat(*response, aux);
+    strcat(*response, "Last-Modified: ");
+    last_modified_http(abspath, &aux, MAXAUX);
+    strcat(*response, aux);
+    strcat(*response, "\r\n");
     sprintf(sizestr, "%d", size);
-    strcat(response, "Content-Length: ");
-    strcat(response, sizestr);
-    strcat(response, "\r\n");
-    strcat(response, "Content-Type: ");
-    strcat(response, type);
-    strcat(response, "\r\n\r\n");
+    strcat(*response, "Content-Length: ");
+    strcat(*response, sizestr);
+    strcat(*response, "\r\n");
+    strcat(*response, "Content-Type: ");
+    strcat(*response, type);
+    strcat(*response, "\r\n\r\n");
     /*BODY*/
-    strcat(response, content);
-    return response;
+    strcat(*response, content);
+    return 1;
 }
