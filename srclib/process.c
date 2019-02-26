@@ -16,7 +16,7 @@
 #define MAXSIZE 5
 #define MAXMETH 15
 #define MAXPATH 4096
-#define MAXFILE 4096
+#define MAXFILE 99999
 #define MAXRES 4096
 #define MAXEXT 10
 #define MAXTYPE 50
@@ -41,8 +41,9 @@ int process_http(int clientfd){
     const char *method, *path;
     int len, pret, minor_version;
     size_t prevbuflen = 0, method_len, path_len, num_headers;
-    char buf[MAXBUF], method_aux[MAXMETH], path_aux[MAXPATH], res[MAXRES];
-    char response[MAXRESPONSE];
+    char buf[MAXBUF], method_aux[MAXMETH], path_aux[MAXPATH];
+    char* response;
+    int size;
     struct phr_header headers[MAXHEADERS];
     len = recv(clientfd, buf, MAXBUF, 0);
     printf("%s\n", buf);
@@ -56,7 +57,7 @@ int process_http(int clientfd){
     sprintf(method_aux, "%.*s", (int)method_len, method);
     sprintf(path_aux, "%.*s", (int)path_len, path);
     /*sprintf(ext, "%s", strrchr(path_aux, '.'));*/
-    get_response(path, headers, num_headers, &response);
+    size = get_response(path_aux, headers, num_headers, &response);
     printf("%s", response);
     /*if(!strcmp(method_aux, "GET")){
         res = get_response(path, headers, num_headers);
@@ -81,18 +82,21 @@ int process_http(int clientfd){
               (int)headers[i].value_len, headers[i].value);
     }
     printf("%s\n", buf+pret);*/
+    send(clientfd, response, size, 0);
     return 0;
 }
 
 int gmt_time_http(char** res, int tam){
     time_t act = time(0);
     struct tm tm = *gmtime(&act);
+    *res = calloc(MAXTIME, sizeof(char));
     strftime(*res, tam, "%a, %d %b %Y %H:%M:%S %Z", &tm);
     return 1;
 }
 
 int general_headers(char** res){
-    char aux[MAXAUX];
+    char* aux;
+    *res = calloc(MAXHEADERS, sizeof(char));//TODO
     strcat(*res, "Date: ");
     gmt_time_http(&aux, MAXAUX);
     strcat(*res, aux);
@@ -108,36 +112,38 @@ int last_modified_http(char* path, char** res, int tam){
     struct stat atrib;
     stat(path, &atrib);
     tm = *gmtime(&(atrib.st_mtime));
+    *res = calloc(MAXTIME, sizeof(char));//TODO
     strftime(*res, tam, "%a, %d %b %Y %H:%M:%S %Z", &tm);
     return 1;
 }
 
 int get_type(char* ext, char** res){
-    if(strcmp(ext, ".txt")){
+    *res = calloc(MAXTYPE, sizeof(char));//TODO
+    if(!strcmp(ext, ".txt")){
         strcpy(*res, "text/plain");
         return 1;
     }
-    if(strcmp(ext, ".html") || strcmp(ext, ".htm")){
+    if(!strcmp(ext, ".html") || strcmp(ext, ".htm")){
         strcpy(*res, "text/html");
         return 1;
     }
-    if(strcmp(ext, ".gif")){
+    if(!strcmp(ext, ".gif")){
         strcpy(*res, "image/gif");
         return 1;
     }
-    if(strcmp(ext, ".jpg") || strcmp(ext, ".jpeg")){
+    if(!strcmp(ext, ".jpg") || strcmp(ext, ".jpeg")){
         strcpy(*res, "image/jpeg");
         return 1;
     }
-    if(strcmp(ext, ".mpg") || strcmp(ext, ".mpeg")){
+    if(!strcmp(ext, ".mpg") || strcmp(ext, ".mpeg")){
         strcpy(*res, "image/mpeg");
         return 1;
     }
-    if(strcmp(ext, ".doc") || strcmp(ext, ".docx")){
+    if(!strcmp(ext, ".doc") || strcmp(ext, ".docx")){
         strcpy(*res, "application/msword");
         return 1;
     }
-    if(strcmp(ext, ".pdf")){
+    if(!strcmp(ext, ".pdf")){
         strcpy(*res, "application/pdf");
         return 1;
     }
@@ -147,19 +153,31 @@ int get_type(char* ext, char** res){
 int get_response(char* path, struct phr_header* headers, size_t num_headers, char** response){
     FILE* fp;
     int size;
-    char buf[MAXBUF], abspath[MAXPATH], content[MAXFILE], sizestr[MAXSIZE], ext[MAXEXT];
-    char type[MAXTYPE], aux[MAXAUX];
+    char abspath[MAXPATH], sizestr[MAXSIZE];
+    char* ext;
+    char* content;
+    char* type;
+    char* aux;
     strcat(abspath, ABSDIR);
+    printf("\n%s\n", path);
+    if(!strcmp(path, "/")){
+        strcat(path, "index.html");
+    }
     strcat(abspath, path);
+    ext = strrchr(path, '.');
     if(!get_type(ext, &type)){
         /*return not_implemented_response()*/
     }
-    fp = fopen(abspath, "r");
+    fp = fopen(abspath, "rb");
     if(!fp){
         /*return not_found_response()*/
+        printf("No he abierto el fichero");
     }
-    size = fread(content, 1 ,sizeof(content), fp);
-    strcat(response, "HTTP/1.1 200 OK\r\n");
+    *response = calloc(MAXRESPONSE, sizeof(char));//TODO
+    content = calloc(MAXFILE, sizeof(char));
+    size = fread(content, 1 ,MAXFILE, fp);
+    printf("%s\n", abspath);
+    strcat(*response, "HTTP/1.1 200 OK\r\n");
     /*HEADERS*/
     general_headers(&aux);
     strcat(*response, aux);
@@ -176,5 +194,5 @@ int get_response(char* path, struct phr_header* headers, size_t num_headers, cha
     strcat(*response, "\r\n\r\n");
     /*BODY*/
     strcat(*response, content);
-    return 1;
+    return size;
 }
