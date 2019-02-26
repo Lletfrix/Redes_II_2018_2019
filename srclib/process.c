@@ -158,7 +158,7 @@ int get_response(char* path, struct phr_header* headers, size_t num_headers, cha
     if(!fp){
         /*return not_found_response()*/
     }
-    size = read(fp, content, MAXFILE);
+    size = fread(content, 1 ,sizeof(content), fp);
     strcat(response, "HTTP/1.1 200 OK\r\n");
     /*HEADERS*/
     general_headers(&aux);
