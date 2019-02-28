@@ -32,10 +32,11 @@
 #define SVRNAME "MyServer"
 
 int get_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
-char* post_response(char* path, struct phr_header* headers, size_t num_headers);
-char* options_response(char* path, struct phr_header* headers, size_t num_headers);
-char* bad_request_response();
-int not_found_response(int clientfd, char** response, char** aux);
+int post_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
+int options_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
+int bad_request_response(int clientfd);
+int method_not_allowed_response(int clientfd);
+int not_found_response(int clientfd);
 int gmt_time_http(char** res, int tam);
 int general_headers(char** res);
 int last_modified_http(char* path, char** res, int tam);
@@ -46,52 +47,30 @@ int process_http(int clientfd){
     int len, pret, minor_version;
     size_t prevbuflen = 0, method_len, path_len, num_headers;
     char buf[MAXBUF], method_aux[MAXMETH], path_aux[MAXPATH];
-    //char* response;
-    //int size;
     struct phr_header headers[MAXHEADERS];
     bzero(buf, MAXBUF);
     len = recv(clientfd, buf, MAXBUF, 0);
     if(len <= 0){
         return EXIT_SUCCESS;
     }
-    printf("%s\n", buf);
     num_headers = sizeof(headers) / sizeof(headers[0]);
     pret = phr_parse_request(buf, len, &method, &method_len, &path, &path_len,
                             &minor_version, headers, &num_headers, prevbuflen);
     if(pret < 0){
-        /*res = bad_request_response()*/
-        return EXIT_SUCCESS;
+        return bad_request_response(clientfd);
     }
-    printf("\n Path antes de handler: %s \n", path);
     sprintf(method_aux, "%.*s", (int)method_len, method);
     sprintf(path_aux, "%.*s", (int)path_len, path);
-    /*sprintf(ext, "%s", strrchr(path_aux, '.'));*/
-    get_handler(path_aux, headers, num_headers, clientfd); //Testing
-    /*if(!strcmp(method_aux, "GET")){
-        res = get_response(path, headers, num_headers);
-    }
+    if(!strcmp(method_aux, "GET")){
+        return get_handler(path_aux, headers, num_headers, clientfd);
+    }/*
     else if(!strcmp(method_aux, "POST")){
-        res = post_response(path, headers, num_headers);
+        return post_handler(path_aux, headers, num_headers, clientfd);
     }
     else if(!strcmp(method_aux, "OPTIONS")){
-        res = options_response(path, headers, num_headers);
-    }
-    else{
-
+        return options_handler(path_aux, headers, num_headers, clientfd);
     }*/
-    /*Just for testing purposes*/
-    /*printf("request is %d bytes long\n", pret);
-    printf("method is %.*s\n", (int)method_len, method);
-    printf("path is %.*s\n", (int)path_len, path);
-    printf("HTTP version is 1.%d\n", minor_version);
-    printf("headers:\n");
-    for (i = 0; i != num_headers; ++i) {
-        printf("%.*s: %.*s\n", (int)headers[i].name_len, headers[i].name,
-              (int)headers[i].value_len, headers[i].value);
-    }
-    printf("%s\n", buf+pret);*/
-    //send(clientfd, response, size, 0);
-    return 0;
+    return method_not_allowed_response(clientfd);
 }
 
 int get_size(char* path){
@@ -101,19 +80,17 @@ int get_size(char* path){
 }
 
 int gmt_time_http(char** res, int tam){
+    char timeaux[MAXTIME];
     time_t act = time(0);
     struct tm tm = *gmtime(&act);
-    *res = calloc(MAXTIME, sizeof(char));
-    strftime(*res, tam, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+    strftime(timeaux, tam, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+    strcat(*res, timeaux);
     return 1;
 }
 
 int general_headers(char** res){
-    char* aux;
-    //*res = calloc(MAXHEADERS, sizeof(char));//TODO
     strcat(*res, "Date: ");
-    gmt_time_http(&aux, MAXAUX);
-    strcat(*res, aux);
+    gmt_time_http(res, MAXAUX);
     strcat(*res, "\r\n");
     strcat(*res, "Server: ");
     strcat(*res, SVRNAME);
@@ -126,13 +103,11 @@ int last_modified_http(char* path, char** res, int tam){
     struct stat atrib;
     stat(path, &atrib);
     tm = *gmtime(&(atrib.st_mtime));
-    //*res = calloc(MAXTIME, sizeof(char));//TODO
     strftime(*res, tam, "%a, %d %b %Y %H:%M:%S %Z", &tm);
     return 1;
 }
 
 int get_type(char* ext, char** res){
-    //*res = calloc(MAXTYPE, sizeof(char));//TODO
     if(!strcmp(ext, ".txt")){
         strcpy(*res, "text/plain");
         return 1;
@@ -165,46 +140,52 @@ int get_type(char* ext, char** res){
 }
 
 int get_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd){
-    //FILE* fp;
     int size;
     char abspath[MAXPATH], sizestr[MAXSIZE];
     char* ext;
     char* response;
-    //char* content;
     char* type;
     char* aux;
     int filefd;
     off_t offset = 0;
+    aux = calloc(MAXAUX, sizeof(char));
+    if(!aux){
+        return EXIT_FAILURE;
+    }
+    response = calloc(MAXRESPONSE, sizeof(char));
+    if(!response){
+        free(aux);
+        return EXIT_FAILURE;
+    }
+    type = calloc(MAXTYPE, sizeof(char));
+    if(!type){
+        free(aux);
+        free(response);
+        return EXIT_FAILURE;
+    }
     bzero(abspath, MAXPATH);
     strcat(abspath, ABSDIR);
     if(!strcmp(path, "/")){
         strcat(path, "index.html");
     }
     strcat(abspath, path);
-    printf("\n Path :%s\n", path);
     ext = strrchr(path, '.');
-    printf("\n Extensión: %s \n", ext);
-    aux = calloc(MAXAUX, sizeof(char));
-    response = calloc(MAXRESPONSE, sizeof(char));//TODO
-    type = calloc(MAXTYPE, sizeof(char));
     if(!get_type(ext, &type)){
-        not_found_response(clientfd, &response, &aux);
+        not_found_response(clientfd);
+        free(aux);
+        free(response);
+        free(type);
         return EXIT_SUCCESS;
     }
-    printf("\n Type: %s \n", type);
     filefd = open(abspath, O_RDONLY);
     if(filefd < 0){
-        not_found_response(clientfd, &response, &aux);
+        not_found_response(clientfd);
+        free(aux);
+        free(response);
+        free(type);
         return EXIT_SUCCESS;
     }
-
-
-    /*content = calloc(MAXFILE, sizeof(char));
-    size = fread(content, 1 ,MAXFILE, fp);*/
-
-
     size = get_size(abspath);
-    printf("%s\n", abspath);
     strcat(response, "HTTP/1.1 200 OK\r\n");
     /*HEADERS*/
     general_headers(&aux);
@@ -221,20 +202,49 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
     strcat(response, type);
     strcat(response, "\r\n\r\n");
     /*BODY*/
-    //strcat(*response, content);
-    printf("\n%s\n", response);
     send(clientfd, response, strlen(response), 0);
     while(offset < size){
-        printf("\n Enviando %s\n", abspath);
         sendfile(clientfd, filefd, &offset, CHUNK);
     }
+    free(aux);
+    free(response);
+    free(type);
+    close(filefd);
     return EXIT_SUCCESS;
 }
 
-int not_found_response(int clientfd, char** response, char** aux){
-    strcat(*response, "HTTP/1.1 404 Not Found\r\n");
-    general_headers(aux);
-    strcat(*response, *aux);
-    send(clientfd, *response, strlen(*response), 0);
+int not_found_response(int clientfd){
+    char* response = calloc(MAXRESPONSE, sizeof(char));
+    if(!response){
+        return EXIT_FAILURE;
+    }
+    strcat(response, "HTTP/1.1 404 Not Found\r\n");
+    general_headers(&response);
+    send(clientfd, response, strlen(response), 0);
+    free(response);
+    return EXIT_SUCCESS;
+}
+
+int method_not_allowed_response(int clientfd){
+    char* response = calloc(MAXRESPONSE, sizeof(char));
+    if(!response){
+        return EXIT_FAILURE;
+    }
+    strcat(response, "HTTP/1.1 405 Method Not Allowed\r\n");
+    general_headers(&response);
+    send(clientfd, response, strlen(response), 0);
+    free(response);
+    return EXIT_SUCCESS;
+}
+
+int bad_request_response(int clientfd){
+    char* response = calloc(MAXRESPONSE, sizeof(char));
+    if(!response){
+        return EXIT_FAILURE;
+    }
+    strcat(response, "HTTP/1.1 400 Bad Request\r\n");
+    general_headers(&response);
+    send(clientfd, response, strlen(response), 0);
+    free(response);
     return EXIT_SUCCESS;
 }
