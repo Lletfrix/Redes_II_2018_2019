@@ -29,6 +29,7 @@
 
 /* CONFIG FILE*/
 #define ABSDIR "/mnt/c/Users/Sergamar/Desktop/Uni/RedesII/www"
+#define DIR404 "/mnt/c/Users/Sergamar/Desktop/Uni/RedesII/www/404.html"
 #define SVRNAME "MyServer"
 
 int get_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
@@ -215,13 +216,36 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
 
 int not_found_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
+    char sizestr[MAXSIZE];
+    int html404, size;
+    off_t offset = 0;
     if(!response){
         return EXIT_FAILURE;
     }
     strcat(response, "HTTP/1.1 404 Not Found\r\n");
     general_headers(&response);
+    strcat(response, "Content-Length: ");
+    html404 = open(DIR404, O_RDONLY);
+    if(!html404){
+        strcat(response, "0\r\n\r\n");
+    }
+    else{
+        size = get_size(DIR404);
+        sprintf(sizestr, "%d", size);
+        strcat(response, sizestr);
+        strcat(response, "\r\n");
+        strcat(response, "Content-Type: text/html\r\n");
+        strcat(response, "\r\n\r\n");
+    }
     send(clientfd, response, strlen(response), 0);
+    printf("\n%s\n", response);
     free(response);
+    if(html404){
+        while(offset < size){
+            sendfile(clientfd, html404, &offset, CHUNK);
+        }
+    }
+    close(html404);
     return EXIT_SUCCESS;
 }
 
