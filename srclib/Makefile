@@ -1,7 +1,7 @@
 ########################################################
 CC := gcc
 CFLAGS := -g -Wall
-LFLAGS := -lpthread
+LFLAGS := -lpthread -lm
 ########################################################
 INCDIR := ../includes
 LIBDIR := ../lib
@@ -32,5 +32,11 @@ test-thrpool: test-thrpool.o $(LIBDIR)/$(LIBS)
 test-thrpool.o: test-thrpool.c
 	$(CC) $(CFLAGS) -c $?
 
+test-llist: test-llist.o linkedlist.o
+	$(CC) $(CFLAGS) -o test-llist $? $(LFLAGS)
+
+test-llist.o: test-llist.c
+	$(CC) $(CFLAGS) -c $?
+
 clean:
-	rm *.o tester
+	rm *.o

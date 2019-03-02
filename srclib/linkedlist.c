@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "../includes/linkedlist.h"
 
 struct lnode *__lnode_new(void *val);
@@ -73,6 +74,19 @@ void *llist_pop(llist *l){
         return aux;
     }
     return NULL;
+}
+
+int llist_print(FILE *f, llist *l, char * (*to_string) (void *)){
+    size_t sum = 0;
+    if(l && l->first){
+        struct lnode *curr=l->first;
+        while (curr->next) {
+            sum+=fprintf(f, "[%s]->", to_string(curr->val));
+            curr=curr->next;
+        }
+        sum+=fprintf(f, "[%s]\n", to_string(curr->val));
+    }
+    return sum;
 }
 
 
