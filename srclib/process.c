@@ -36,7 +36,7 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
 int post_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
 int options_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
 int bad_request_response(int clientfd);
-int method_not_allowed_response(int clientfd);
+int method_not_implemented_response(int clientfd);
 int not_found_response(int clientfd);
 int gmt_time_http(char** res, int tam);
 int general_headers(char** res);
@@ -67,11 +67,11 @@ int process_http(int clientfd){
     }/*
     else if(!strcmp(method_aux, "POST")){
         return post_handler(path_aux, headers, num_headers, clientfd);
-    }
+    }*/
     else if(!strcmp(method_aux, "OPTIONS")){
         return options_handler(path_aux, headers, num_headers, clientfd);
-    }*/
-    return method_not_allowed_response(clientfd);
+    }
+    return method_not_implemented_response(clientfd);
 }
 
 int get_size(char* path){
@@ -214,6 +214,27 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
     return EXIT_SUCCESS;
 }
 
+int options_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd){
+    char* response;
+    char* aux;
+    response = calloc(MAXRESPONSE, sizeof(char));
+    if(!response){
+        return EXIT_FAILURE;
+    }
+    aux = calloc(MAXAUX, sizeof(char));
+    if(!aux){
+        free(response);
+        return EXIT_FAILURE;
+    }
+    strcat(response, "HTTP/1.1 200 OK\r\n");
+    general_headers(&aux);
+    strcat(response, aux);
+    strcat(response, "Allow: GET,OPTIONS,POST\r\n");
+    strcat(response, "Content-Length: 0\r\n\r\n");
+    send(clientfd, response, strlen(response), 0);
+    return EXIT_SUCCESS;
+}
+
 int not_found_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
     char sizestr[MAXSIZE];
@@ -249,13 +270,14 @@ int not_found_response(int clientfd){
     return EXIT_SUCCESS;
 }
 
-int method_not_allowed_response(int clientfd){
+int method_not_implemented_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
     if(!response){
         return EXIT_FAILURE;
     }
-    strcat(response, "HTTP/1.1 405 Method Not Allowed\r\n");
+    strcat(response, "HTTP/1.1 501 Not Implemented\r\n");
     general_headers(&response);
+    strcat(response, "\r\n");
     send(clientfd, response, strlen(response), 0);
     free(response);
     return EXIT_SUCCESS;
@@ -268,6 +290,7 @@ int bad_request_response(int clientfd){
     }
     strcat(response, "HTTP/1.1 400 Bad Request\r\n");
     general_headers(&response);
+    strcat(response, "\r\n");
     send(clientfd, response, strlen(response), 0);
     free(response);
     return EXIT_SUCCESS;
