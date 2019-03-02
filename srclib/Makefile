@@ -1,11 +1,12 @@
 ########################################################
 CC := gcc
 CFLAGS := -g -Wall
+LFLAGS := -lpthread
 ########################################################
 INCDIR := ../includes
 LIBDIR := ../lib
 LIBS := my_lib.a
-OBJECTS := connections.o daemon.o
+OBJECTS := connections.o daemon.o thrpool.o
 #######################################################
 
 all: $(LIBS)
@@ -19,10 +20,16 @@ connections.o: connections.c
 daemon.o: daemon.c
 	$(CC) $(CFLAGS) -c $?
 
-tester: tester.o $(LIBDIR)/$(LIBS)
-	$(CC) $(CFLAGS) -o tester $?
+thrpool.o : thrpool.c
+	$(CC) $(CFLAGS) -c $?
 
-tester.o: tester.c
+linkedlist.o : linkedlist.c
+	$(CC) $(CFLAGS) -c $?
+
+test-thrpool: test-thrpool.o $(LIBDIR)/$(LIBS)
+	$(CC) $(CFLAGS) -o test-thrpool $? $(LFLAGS)
+
+test-thrpool.o: test-thrpool.c
 	$(CC) $(CFLAGS) -c $?
 
 clean:
