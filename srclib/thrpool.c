@@ -48,7 +48,7 @@ int thrpool_execute(struct thrpool *pool, const unsigned int initial){
     }
     unsigned int limit = initial < pool->max ? initial : pool->max;
     for (unsigned int i = 0; i < limit; ++i){
-        pthread_new(&pool->threads[i].tid, NULL, pool->thread_routine, (void *) i);
+        pthread_create(&pool->threads[i].tid, NULL, pool->thread_routine, (void *) i);
         pool->threads[i].st=FREE;
         pthread_detach(pool->threads[i].tid);
     }
