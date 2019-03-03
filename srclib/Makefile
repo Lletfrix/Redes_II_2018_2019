@@ -6,7 +6,7 @@ LFLAGS := -lpthread -lm
 INCDIR := ../includes
 LIBDIR := ../lib
 LIBS := my_lib.a
-OBJECTS := connections.o daemon.o thrpool.o
+OBJECTS := connections.o daemon.o thrpool.o linkedlist.o
 #######################################################
 
 all: $(LIBS)
