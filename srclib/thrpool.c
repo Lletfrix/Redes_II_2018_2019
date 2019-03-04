@@ -49,7 +49,7 @@ int thrpool_execute(struct thrpool *pool, const unsigned int initial){
         return 0;
     }
     pthread_t *tid;
-    unsigned int limit = initial < pool->max ? initial : pool->max;
+    unsigned int limit = initial < (pool->max-pool->n_alive) ? initial : (pool->max-pool->n_alive);
     for (unsigned int i = 0; i < limit; ++i){
         tid = calloc(1, sizeof(pthread_t));
         pthread_mutex_lock(&pool->freemtx);
@@ -58,7 +58,6 @@ int thrpool_execute(struct thrpool *pool, const unsigned int initial){
         pthread_mutex_unlock(&pool->freemtx);
         pool->n_free += 1;
         pool->n_alive += 1;
-        //pthread_detach(*tid);
     }
     return 1;
 }
@@ -67,18 +66,18 @@ int thrpool_terminate(struct thrpool *pool){
     pthread_t *tid = NULL;
     if(pool){
         pthread_mutex_lock(&pool->freemtx);
+        pthread_mutex_lock(&pool->busymtx);
         while((tid = llist_pop(pool->free))){
             pthread_cancel(*tid);
             pthread_join(*tid, NULL);
         }
-        pthread_mutex_unlock(&pool->freemtx);
 
-        pthread_mutex_lock(&pool->busymtx);
         while((tid = llist_pop(pool->busy))){
             pthread_cancel(*tid);
             pthread_join(*tid, NULL);
         }
         pthread_mutex_unlock(&pool->busymtx);
+        pthread_mutex_unlock(&pool->freemtx);
         return 1;
     }
     return 0;

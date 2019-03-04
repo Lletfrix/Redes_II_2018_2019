@@ -37,16 +37,16 @@ void *thread_process(void *arg){
     pthread_cleanup_push(clean, arg);
 
     pthread_mutex_lock(&pool->freemtx);
+    pthread_mutex_lock(&pool->busymtx);
     aux = llist_del(pool->free, &tid, tid_cmp);
     if(aux) free(aux);
     printf("He salido de Free: ");
     llist_print(stdout, pool->free, tid_string);
-    pthread_mutex_unlock(&pool->freemtx);
 
-    pthread_mutex_lock(&pool->busymtx);
     llist_add(pool->busy, &tid);
     printf("Soy el hilo de TID: %lu y he entrado en lan lista de busy\n", tid);
     pthread_mutex_unlock(&pool->busymtx);
+    pthread_mutex_unlock(&pool->freemtx);
 
     sleep(10);
     pthread_cleanup_pop(1);
@@ -55,7 +55,7 @@ void *thread_process(void *arg){
 
 int main(){
     struct thrpool *p = thrpool_new(10, thread_process);
-    thrpool_execute(p, 3);
+    thrpool_execute(p, 10);
     sleep(5);
     printf("Free: ");
     llist_print(stdout, p->free, tid_string);
