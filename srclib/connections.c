@@ -48,7 +48,6 @@ int accept_connection(int listen_fd, struct sockaddr* client_sock, socklen_t* cl
         //TODO
     }
     return client_fd;*/
-
     return accept(listen_fd, client_sock, clilen);
 }
 
