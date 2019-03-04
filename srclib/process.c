@@ -352,9 +352,12 @@ int process_script(char* abspath, char* body, int clientfd){
     }
     if(!strcmp(script_ext, ".php")){
         sprintf(command, "php %.*s", (int)(param-abspath), abspath);
+        strcat(command, " < ");
         if(body){
-            strcat(command, " < ");
             strcat(command, SCRTXT);
+        }
+        else{
+            strcat(command, "/dev/null");
         }
         pipe = popen(command, "r");
         fread(result, sizeof(char), MAXRESULT, pipe);
