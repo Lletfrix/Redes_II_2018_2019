@@ -64,6 +64,5 @@ int main(){
     printf("\n");
     thrpool_terminate(p);
     thrpool_free(p);
-    sleep(1);
     return 0;
 }

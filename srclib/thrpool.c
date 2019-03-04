@@ -58,7 +58,7 @@ int thrpool_execute(struct thrpool *pool, const unsigned int initial){
         pthread_mutex_unlock(&pool->freemtx);
         pool->n_free += 1;
         pool->n_alive += 1;
-        pthread_detach(*tid);
+        //pthread_detach(*tid);
     }
     return 1;
 }
@@ -69,12 +69,14 @@ int thrpool_terminate(struct thrpool *pool){
         pthread_mutex_lock(&pool->freemtx);
         while((tid = llist_pop(pool->free))){
             pthread_cancel(*tid);
+            pthread_join(*tid, NULL);
         }
         pthread_mutex_unlock(&pool->freemtx);
 
         pthread_mutex_lock(&pool->busymtx);
         while((tid = llist_pop(pool->busy))){
             pthread_cancel(*tid);
+            pthread_join(*tid, NULL);
         }
         pthread_mutex_unlock(&pool->busymtx);
         return 1;
