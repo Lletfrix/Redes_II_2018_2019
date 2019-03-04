@@ -39,4 +39,4 @@ test-llist.o: test-llist.c
 	$(CC) $(CFLAGS) -c $?
 
 clean:
-	rm *.o
+	rm *.o test-thrpool

@@ -1,18 +1,7 @@
 #ifndef THRPOOL_H
 #define THRPOOL_H
 
-typedef enum thread_status{
-    DEAD, FREE, BUSY
-} thr_status;
-
-typedef struct thr{
-    pthread_t tid;
-    thr_status st;
-    //TODO: Add whats needed
-} thr;
-
 struct thrpool{
-    thr *threads;
     int n_free;
     int n_alive;
     unsigned int max;
@@ -20,12 +9,8 @@ struct thrpool{
     void * (*thread_routine) (void *);
     llist *free;
     llist *busy;
-};
-
-
-struct pthread_args{
-    int index;
-    struct thrpool *pool;
+    pthread_mutex_t freemtx;
+    pthread_mutex_t busymtx;
 };
 
 struct thrpool *thrpool_new(const unsigned int max, void *(*thr_routine) (void *));

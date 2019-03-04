@@ -40,7 +40,7 @@ void *llist_pop(llist *l);
  * @param cmp_func Function used to compare values. Must return 0 if equal.
  * @return error code.
  */
-int llist_del(llist *l, void *elem, int (*cmp_func) (void *, void *));
+void *llist_del(llist *l, void *elem, int (*cmp_func) (void *, void *));
 
 int llist_print(FILE *f, llist *l, char * (*to_string) (void *));
 #endif

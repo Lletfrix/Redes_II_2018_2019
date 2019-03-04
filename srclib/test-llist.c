@@ -4,14 +4,10 @@
 #include "../includes/linkedlist.h"
 
 char *int_str(void *x){
-    switch (*(int*)x) {
-        case 2:
-            return "2";
-        case 3:
-            return "3";
-        default:
-            return "INF";
-    }
+    size_t digits = ceil(log10(* (int*) x));
+    char *s = calloc(digits+1, sizeof(int));
+    snprintf(s, digits+1, "%d", *(int *)x);
+    return s;
 }
 
 int cmp_int(void *x, void *y){
@@ -23,6 +19,7 @@ int main(){
     int a = 3;
     int b = 2;
     llist_add(l, &a);
+    llist_del(l, &a, cmp_int);
     llist_add(l, &b);
     llist_add(l, &b);
     llist_add(l, &a);
@@ -37,6 +34,14 @@ int main(){
     llist_add(l, &b);
     llist_print(stdout, l, int_str);
     llist_del(l, &a, cmp_int);
+    llist_print(stdout, l, int_str);
+    llist_del(l, &b, cmp_int);
+    llist_del(l, &b, cmp_int);
+    llist_del(l, &b, cmp_int);
+    llist_print(stdout, l, int_str);
+    llist_del(l, &b, cmp_int);
+    llist_print(stdout, l, int_str);
+    llist_pop(l);
     llist_print(stdout, l, int_str);
     llist_destroy(l);
     llist_free(l);

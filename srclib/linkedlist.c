@@ -45,24 +45,27 @@ int llist_add(llist *l, void *elem){
     return 0;
 }
 
-int llist_del(llist *l, void *elem, int (*cmp_func) (void *, void *)){
+void *llist_del(llist *l, void *elem, int (*cmp_func) (void *, void *)){
+    void *aux;
     if(l){
-        struct lnode *curr = NULL, *next = l->first;
-        if (!cmp_func(next->val, elem)){
-            __lnode_free(next);
-            l->first = NULL;
-            return 1;
+        struct lnode *temp = l->first, *prev;
+        if(temp && !cmp_func(elem, temp->val)){
+            l->first = temp->next;
+            aux = temp->val;
+            __lnode_free(temp);
+            return aux;
         }
-        curr = l->first; next = curr->next;
-        while(next){
-            if (!cmp_func(next->val, elem)){
-                curr->next = next->next;
-                __lnode_free(next);
-                return 1;
-            }
+        while( temp && cmp_func(elem, temp->val)){
+            prev = temp;
+            temp = temp->next;
         }
+        if(!temp) return NULL;
+        prev->next = temp->next;
+        aux = temp->val;
+        __lnode_free(temp);
+        return aux;
     }
-    return 0;
+    return NULL;
 }
 
 void *llist_pop(llist *l){
@@ -78,17 +81,28 @@ void *llist_pop(llist *l){
 
 int llist_print(FILE *f, llist *l, char * (*to_string) (void *)){
     size_t sum = 0;
-    if(l && l->first){
+    char *string;
+    if(l){
+        if(l->first){
+
         struct lnode *curr=l->first;
         while (curr->next) {
-            sum+=fprintf(f, "[%s]->", to_string(curr->val));
+            string = to_string(curr->val);
+            sum+=fprintf(f, "[%s]->", string);
+            if(string) free(string);
             curr=curr->next;
         }
-        sum+=fprintf(f, "[%s]\n", to_string(curr->val));
-    }
-    return sum;
-}
+        string = to_string(curr->val);
+        sum+=fprintf(f, "[%s]\n", string);
+        free(string);
+        }else{
+            sum+=printf("[]\n");
 
+        }
+        return sum;
+    }
+    return 0;
+}
 
 struct lnode *__lnode_new(void *val){
     struct lnode *new = calloc(1, sizeof(struct lnode));
