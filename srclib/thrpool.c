@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <signal.h>
 #include "../includes/linkedlist.h"
 #include "../includes/thrpool.h"
 
@@ -68,13 +69,15 @@ int thrpool_terminate(struct thrpool *pool){
         pthread_mutex_lock(&pool->freemtx);
         pthread_mutex_lock(&pool->busymtx);
         while((tid = llist_pop(pool->free))){
-            pthread_cancel(*tid);
+            pthread_kill(*tid, SIGUSR1);
             pthread_join(*tid, NULL);
+            free(tid);
         }
 
         while((tid = llist_pop(pool->busy))){
-            pthread_cancel(*tid);
+            pthread_kill(*tid, SIGUSR1);
             pthread_join(*tid, NULL);
+            free(tid);
         }
         pthread_mutex_unlock(&pool->busymtx);
         pthread_mutex_unlock(&pool->freemtx);

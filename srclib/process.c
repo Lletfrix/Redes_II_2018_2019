@@ -8,7 +8,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
-
+#include <pthread.h>
 #include "../includes/picohttpparser.h"
 #include "../includes/process.h"
 
@@ -28,7 +28,9 @@
 #define CHUNK 4096
 #define MAXSCRIPT 10
 #define MAXCOMMAND 500
+#define MAXVALUE 200
 #define MAXRESULT 1000
+#define MAXBODY 99999
 
 /* CONFIG FILE*/
 #define ABSDIR "/home/lletfrix/server/www"
@@ -37,7 +39,7 @@
 #define SVRNAME "MyServer"
 
 int get_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
-int post_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
+int post_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd, char* body);
 int options_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
 int bad_request_response(int clientfd);
 int method_not_implemented_response(int clientfd);
@@ -47,35 +49,61 @@ int general_headers(char** res);
 int last_modified_http(char* path, char** res, int tam);
 int get_type(const char* ext, char* res);
 int __file_exists(char* abspath);
-int run_script(char* abspath, char* body);
+int run_script(char* abspath, char* body, char** result);
+int check_connection(struct phr_header* headers, int num_headers);
 
 int process_http(int clientfd){
     const char *method, *path;
     int len, pret, minor_version;
     size_t prevbuflen = 0, method_len, path_len, num_headers;
-    char buf[MAXBUF], method_aux[MAXMETH], path_aux[MAXPATH];
+    char buf[MAXBUF], method_aux[MAXMETH], path_aux[MAXPATH], body[MAXBODY];
     struct phr_header headers[MAXHEADERS];
-    bzero(buf, MAXBUF);
-    len = recv(clientfd, buf, MAXBUF, 0);
-    if(len <= 0){
-        return EXIT_SUCCESS;
-    }
-    num_headers = sizeof(headers) / sizeof(headers[0]);
-    pret = phr_parse_request(buf, len, &method, &method_len, &path, &path_len,
-                            &minor_version, headers, &num_headers, prevbuflen);
-    if(pret < 0){
-        return bad_request_response(clientfd);
-    }
-    sprintf(method_aux, "%.*s", (int)method_len, method);
-    sprintf(path_aux, "%.*s", (int)path_len, path);
-    if(!strcmp(method_aux, "GET")){
-        return get_handler(path_aux, headers, num_headers, clientfd);
-    }/*
-    else if(!strcmp(method_aux, "POST")){
-        return post_handler(path_aux, headers, num_headers, clientfd);
-    }*/
-    else if(!strcmp(method_aux, "OPTIONS")){
-        return options_handler(path_aux, headers, num_headers, clientfd);
+    short keep_alive=1;
+    int errcode;
+    while(keep_alive){
+
+        bzero(buf, MAXBUF);
+        len = recv(clientfd, buf, MAXBUF, 0);
+        if(len <= 0){
+            return EXIT_SUCCESS;
+        }
+        num_headers = sizeof(headers) / sizeof(headers[0]);
+        pret = phr_parse_request(buf, len, &method, &method_len, &path, &path_len,
+                                &minor_version, headers, &num_headers, prevbuflen);
+        if(pret < 0){
+            return bad_request_response(clientfd);
+        }
+        if(check_connection(headers, num_headers)){
+            keep_alive=0;
+        }
+        sprintf(method_aux, "%.*s", (int)method_len, method);
+        sprintf(path_aux, "%.*s", (int)path_len, path);
+
+        //DEBUG
+        /*
+        printf("\033[48;2;%d;%d;%dm", 0, 0, 255);
+        printf("\n\nSoy %ld\n", pthread_self());
+        printf("request is %d bytes long\n", pret);
+        printf("method is %.*s\n", (int)method_len, method);
+        printf("path is %.*s\n", (int)path_len, path);
+        printf("HTTP version is 1.%d\n", minor_version);
+        printf("headers:\n");
+        for (int i = 0; i != num_headers; ++i) {
+            printf("%.*s: %.*s\n", (int)headers[i].name_len, headers[i].name,
+                   (int)headers[i].value_len, headers[i].value);
+        }*/
+        //END DEBUG
+        if(!strcmp(method_aux, "GET")){
+            errcode = get_handler(path_aux, headers, num_headers, clientfd);
+        }
+        else if(!strcmp(method_aux, "POST")){
+            sprintf(body, "%s", buf+pret);
+            errcode = post_handler(path_aux, headers, num_headers, clientfd, body);
+        }
+        else if(!strcmp(method_aux, "OPTIONS")){
+            errcode = options_handler(path_aux, headers, num_headers, clientfd);
+        }
+        if(errcode) keep_alive = 0;
     }
     return method_not_implemented_response(clientfd);
 }
@@ -135,6 +163,10 @@ int get_type(const char* ext, char* res){
         strcpy(res, "image/mpeg");
         return 1;
     }
+    if(!strcmp(ext, ".ico")){
+        strcpy(res, "image/vnd.microsoft.icon");
+        return 1;
+    }
     if(!strcmp(ext, ".doc") || !strcmp(ext, ".docx")){
         strcpy(res, "application/msword");
         return 1;
@@ -151,6 +183,7 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
     char abspath[MAXPATH]={0}, sizestr[MAXSIZE], script_ext[MAXSCRIPT];
     char* ext;
     char* response;
+    char* result;
     char* type;
     char* aux;
     int filefd;
@@ -185,7 +218,15 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
     if(strrchr(ext, '?')){
         sprintf(script_ext, "%.*s", (int)(strrchr(ext, '?') - ext), ext);
         if(!strcmp(script_ext, ".py") || !strcmp(script_ext, ".php")){
-            run_script(abspath, NULL);
+            result = calloc(MAXRESULT, sizeof(char));
+            if(!result){
+                free(aux);
+                free(response);
+                free(type);
+                return EXIT_FAILURE;
+            }
+            run_script(abspath, NULL, &result);
+            //Answer
         }
         else{
             not_found_response(clientfd);
@@ -258,6 +299,28 @@ int options_handler(char* path, struct phr_header* headers, size_t num_headers, 
     return EXIT_SUCCESS;
 }
 
+int post_handler(char* path_aux, struct phr_header* headers, size_t num_headers, int clientfd, char* body){
+    char* ext;
+    char* result;
+    char abspath[MAXPATH];
+    char script_ext[MAXSCRIPT];
+    ext = strrchr(path_aux, '.');
+    sprintf(abspath, "%s", ABSDIR);
+    strcat(abspath, path_aux);
+    if(strrchr(ext, '?')){
+        sprintf(script_ext, "%.*s", (int)(strrchr(ext, '?') - ext), ext);
+        if(!strcmp(script_ext, ".py") || !strcmp(script_ext, ".php")){
+            result = calloc(MAXRESULT, sizeof(char));
+            if(!result){
+                return EXIT_FAILURE;
+            }
+            run_script(abspath, body, &result);
+            //Answer
+        }
+    }
+    return EXIT_FAILURE;
+}
+
 int not_found_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
     char sizestr[MAXSIZE];
@@ -284,7 +347,7 @@ int not_found_response(int clientfd){
     send(clientfd, response, strlen(response), 0);
     printf("\n%s\n", response);
     free(response);
-    if(html404){
+    if(html404 >= 0){
         while(offset < size){
             sendfile(clientfd, html404, &offset, CHUNK);
         }
@@ -319,11 +382,10 @@ int bad_request_response(int clientfd){
     return EXIT_SUCCESS;
 }
 
-int run_script(char* abspath, char* body){
+int run_script(char* abspath, char* body, char** result){
     char* ext;
     char* param;
     char command[MAXCOMMAND];
-    char result[MAXRESULT];
     char script_ext[MAXSCRIPT];
     char file_url[MAXPATH];
     FILE* pipe;
@@ -351,7 +413,7 @@ int run_script(char* abspath, char* body){
             strcat(command, "/dev/null");
         }
         pipe = popen(command, "r");
-        fread(result, sizeof(char), MAXRESULT, pipe);
+        fread(*result, sizeof(char), MAXRESULT, pipe);
         pclose(pipe);
     }
     if(!strcmp(script_ext, ".php")){
@@ -364,7 +426,7 @@ int run_script(char* abspath, char* body){
             strcat(command, "/dev/null");
         }
         pipe = popen(command, "r");
-        fread(result, sizeof(char), MAXRESULT, pipe);
+        fread(*result, sizeof(char), MAXRESULT, pipe);
         pclose(pipe);
     }
     return EXIT_SUCCESS;
@@ -376,4 +438,19 @@ int __file_exists(char *name){
     if(!(fp = fopen(name, "r"))) return EXIT_FAILURE;
     fclose(fp);
     return EXIT_SUCCESS;
+}
+
+int check_connection(struct phr_header* headers, int num_headers){
+    int i;
+    char header[MAXHEADERS], value[MAXVALUE];
+    for(i = 0; i < num_headers; i++){
+        sprintf(header, "%.*s", (int)headers[i].name_len, headers[i].name);
+        if(!strcmp(header, "Connection:")){
+            sprintf(value, "%.*s", (int)headers[i].value_len, headers[i].value);
+            if(!strcmp(value, "close")){
+                return -1;
+            }
+        }
+    }
+    return 0;
 }

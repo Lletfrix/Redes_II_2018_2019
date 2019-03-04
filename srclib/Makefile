@@ -38,7 +38,7 @@ thrpool.o : thrpool.c
 linkedlist.o : linkedlist.c
 	$(CC) $(CFLAGS) -c $? $(LFLAGS)
 
-test-thrpool: test-thrpool.o $(LIBDIR)/$(LIBS)
+test-thrpool: test-thrpool.o $(LIBDIR)/$(LIB1) $(LIBDIR)/$(LIB2)
 	$(CC) $(CFLAGS) -o test-thrpool $? $(LFLAGS)
 
 test-thrpool.o: test-thrpool.c

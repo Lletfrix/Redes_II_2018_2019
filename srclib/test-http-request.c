@@ -22,25 +22,43 @@ pthread_mutex_t mutex_accept = PTHREAD_MUTEX_INITIALIZER;
 
 void handle_sigint(int sig)
 {
-    close_connection(sockfd);
     thrpool_terminate(pool);
     thrpool_free(pool);
-    //close_connection(clientfd);
+    close_connection(sockfd);
+
+    int n_fd = getdtablesize();
+    for(int i = 3; i < n_fd; ++i){
+        close(i);
+    }
+
     exit(EXIT_SUCCESS);
+}
+
+void handle_sigusr1(int sig){
+    pthread_mutex_unlock(&mutex_accept);
+    pthread_mutex_unlock(&pool->freemtx);
+    pthread_mutex_unlock(&pool->busymtx);
+    //close(clientfd);
+    pthread_exit(NULL);
 }
 
 void *func(void *args){
     int clientfd;
     struct sockaddr_in client;
     socklen_t addrlen = sizeof(struct sockaddr_in);
+    signal(SIGUSR1, handle_sigusr1);
     while(1){
         pthread_mutex_lock(&mutex_accept);
         clientfd = accept_connection(sockfd, (struct sockaddr*)&client, &addrlen);
-        printf("Soy %lu y he aceptado conexion.\n", pthread_self());
+        printf("\033[48;2;%d;%d;%dm", 255, 0, 0);
+        printf("Soy (%lu, %d) y he aceptado conexion.\n", pthread_self(), clientfd);
         pthread_mutex_unlock(&mutex_accept);
         process_http(clientfd);
+        printf("\033[48;2;%d;%d;%dm", 0, 255, 0);
+        printf("Soy (%lu, %d) y he terminado conexion.\n", pthread_self(), clientfd);
         close_connection(clientfd);
     }
+    return NULL;
 }
 
 int main(void){
@@ -49,13 +67,14 @@ int main(void){
     struct sockaddr_in client;
     socklen_t addrlen = sizeof(client);
 
-    pool = thrpool_new(4, func);
+    pool = thrpool_new(15, func);
 
     sockfd = tcp_listen(ip, port);
     printf("Estamos escuchando\n");
 
     signal(SIGINT, handle_sigint);
 
-    thrpool_execute(pool, 4);
+    thrpool_execute(pool, 15);
     for(;;) pause();
+    return 0;
 }
