@@ -1,6 +1,8 @@
 #ifndef THRPOOL_H
 #define THRPOOL_H
 
+#include "linkedlist.h"
+
 struct thrpool{
     int n_free;
     int n_alive;

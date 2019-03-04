@@ -19,7 +19,7 @@
 #define MAXSIZE 5
 #define MAXMETH 15
 #define MAXPATH 4096
-#define MAXFILE 99999
+#define MAXFILE 999999
 #define MAXRES 4096
 #define MAXEXT 10
 #define MAXTYPE 50
@@ -31,9 +31,9 @@
 #define MAXRESULT 1000
 
 /* CONFIG FILE*/
-#define ABSDIR "/mnt/c/Users/Sergamar/Desktop/Uni/RedesII/www"
-#define DIR404 "/mnt/c/Users/Sergamar/Desktop/Uni/RedesII/www/404.html"
-#define SCRTXT "/mnt/c/Users/Sergamar/Desktop/Uni/RedesII/scripts/aux.txt"
+#define ABSDIR "/home/lletfrix/server/www"
+#define DIR404 "/home/lletfrix/server/www/404.html"
+#define SCRTXT "/home/lletfrix/server/scripts/aux.txt"
 #define SVRNAME "MyServer"
 
 int get_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
@@ -45,9 +45,9 @@ int not_found_response(int clientfd);
 int gmt_time_http(char** res, int tam);
 int general_headers(char** res);
 int last_modified_http(char* path, char** res, int tam);
-int get_type(char* ext, char** res);
-int file_exists(char* abspath);
-int process_script(char* abspath, char* body, int clientfd);
+int get_type(const char* ext, char* res);
+int __file_exists(char* abspath);
+int run_script(char* abspath, char* body);
 
 int process_http(int clientfd){
     const char *method, *path;
@@ -114,33 +114,33 @@ int last_modified_http(char* path, char** res, int tam){
     return 1;
 }
 
-int get_type(char* ext, char** res){
+int get_type(const char* ext, char* res){
     if(!strcmp(ext, ".txt")){
-        strcpy(*res, "text/plain");
+        strcpy(res, "text/plain");
         return 1;
     }
     if(!strcmp(ext, ".html") || !strcmp(ext, ".htm")){
-        strcpy(*res, "text/html");
+        strcpy(res, "text/html");
         return 1;
     }
     if(!strcmp(ext, ".gif")){
-        strcpy(*res, "image/gif");
+        strcpy(res, "image/gif");
         return 1;
     }
     if(!strcmp(ext, ".jpg") || !strcmp(ext, ".jpeg")){
-        strcpy(*res, "image/jpeg");
+        strcpy(res, "image/jpeg");
         return 1;
     }
     if(!strcmp(ext, ".mpg") || !strcmp(ext, ".mpeg")){
-        strcpy(*res, "image/mpeg");
+        strcpy(res, "image/mpeg");
         return 1;
     }
     if(!strcmp(ext, ".doc") || !strcmp(ext, ".docx")){
-        strcpy(*res, "application/msword");
+        strcpy(res, "application/msword");
         return 1;
     }
     if(!strcmp(ext, ".pdf")){
-        strcpy(*res, "application/pdf");
+        strcpy(res, "application/pdf");
         return 1;
     }
     return 0;
@@ -148,46 +148,44 @@ int get_type(char* ext, char** res){
 
 int get_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd){
     int size;
-    char abspath[MAXPATH], sizestr[MAXSIZE], script_ext[MAXSCRIPT];
+    char abspath[MAXPATH]={0}, sizestr[MAXSIZE], script_ext[MAXSCRIPT];
     char* ext;
     char* response;
     char* type;
     char* aux;
     int filefd;
     off_t offset = 0;
+    //Allocates memory
     aux = calloc(MAXAUX, sizeof(char));
-    if(!aux){
-        return EXIT_FAILURE;
-    }
+
     response = calloc(MAXRESPONSE, sizeof(char));
-    if(!response){
-        free(aux);
-        return EXIT_FAILURE;
-    }
+
     type = calloc(MAXTYPE, sizeof(char));
     if(!type){
         free(aux);
         free(response);
         return EXIT_FAILURE;
     }
-    bzero(abspath, MAXPATH);
+    //Build path with index.html
     strcat(abspath, ABSDIR);
     if(!strcmp(path, "/")){
         strcat(path, "index.html");
     }
     strcat(abspath, path);
     ext = strrchr(path, '.');
-    if(!get_type(ext, &type) && !strrchr(ext,'?')){
+    //Gets type of request
+    if(!get_type(ext, type) && !strrchr(ext,'?')){
         not_found_response(clientfd);
         free(aux);
         free(response);
         free(type);
         return EXIT_SUCCESS;
     }
+    //Launch if script
     if(strrchr(ext, '?')){
         sprintf(script_ext, "%.*s", (int)(strrchr(ext, '?') - ext), ext);
         if(!strcmp(script_ext, ".py") || !strcmp(script_ext, ".php")){
-            process_script(abspath, NULL, clientfd);
+            run_script(abspath, NULL);
         }
         else{
             not_found_response(clientfd);
@@ -197,6 +195,7 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
         free(type);
         return EXIT_SUCCESS;
     }
+    //Open file descriptor for resource
     filefd = open(abspath, O_RDONLY);
     if(filefd < 0){
         not_found_response(clientfd);
@@ -205,6 +204,8 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
         free(type);
         return EXIT_SUCCESS;
     }
+    //Builds header
+    //TODO: Change this for function __build_get_header(response, );
     size = get_size(abspath);
     strcat(response, "HTTP/1.1 200 OK\r\n");
     /*HEADERS*/
@@ -221,11 +222,14 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
     strcat(response, "Content-Type: ");
     strcat(response, type);
     strcat(response, "\r\n\r\n");
-    /*BODY*/
+    //Sends header
     send(clientfd, response, strlen(response), 0);
+    /*BODY*/
+    //Sends chunked body
     while(offset < size){
         sendfile(clientfd, filefd, &offset, CHUNK);
     }
+    //Free stuff
     free(aux);
     free(response);
     free(type);
@@ -266,7 +270,7 @@ int not_found_response(int clientfd){
     general_headers(&response);
     strcat(response, "Content-Length: ");
     html404 = open(DIR404, O_RDONLY);
-    if(!html404){
+    if(html404 < 0){
         strcat(response, "0\r\n\r\n");
     }
     else{
@@ -315,7 +319,7 @@ int bad_request_response(int clientfd){
     return EXIT_SUCCESS;
 }
 
-int process_script(char* abspath, char* body, int clientfd){
+int run_script(char* abspath, char* body){
     char* ext;
     char* param;
     char command[MAXCOMMAND];
@@ -327,7 +331,7 @@ int process_script(char* abspath, char* body, int clientfd){
     ext = strrchr(abspath, '.');
     param = strrchr(abspath, '?');
     sprintf(file_url, "%.*s", (int)(param-abspath), abspath);
-    if(file_exists(file_url)){
+    if(__file_exists(file_url)){
         return EXIT_FAILURE;
     }
     sprintf(script_ext, "%.*s", (int)(param-ext), ext);
@@ -367,7 +371,7 @@ int process_script(char* abspath, char* body, int clientfd){
 }
 
 
-int file_exists(char *name){
+int __file_exists(char *name){
     FILE *fp;
     if(!(fp = fopen(name, "r"))) return EXIT_FAILURE;
     fclose(fp);
