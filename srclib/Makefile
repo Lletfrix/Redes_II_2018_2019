@@ -60,4 +60,4 @@ test-http-request.o: test-http-request.c
 	$(CC) $(CFLAGS) -c $? $(LFLAGS)
 
 clean:
-	rm *.o $(TEST)
+	rm *.o *.txt $(TEST)
