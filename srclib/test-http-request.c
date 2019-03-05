@@ -64,8 +64,8 @@ void *func(void *args){
 int main(void){
     char ip[] = "127.0.0.1";
     int port = 5001;
-    struct sockaddr_in client;
-    socklen_t addrlen = sizeof(client);
+    //struct sockaddr_in client;
+    //socklen_t addrlen = sizeof(client);
 
     sockfd = tcp_listen(ip, port);
 

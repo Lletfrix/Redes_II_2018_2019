@@ -36,6 +36,7 @@
 /* CONFIG FILE*/
 #define ABSDIR "/home/lletfrix/server/www"
 #define DIR404 "/home/lletfrix/server/www/404.html"
+#define DIR500 "/home/lletfrix/server/www/500.html"
 #define SCRTXT "/home/lletfrix/server/scripts/aux.txt"
 #define SVRNAME "MyServer"
 
@@ -45,6 +46,7 @@ int options_handler(char* path, struct phr_header* headers, size_t num_headers, 
 int bad_request_response(int clientfd);
 int method_not_implemented_response(int clientfd);
 int not_found_response(int clientfd);
+int internal_error_response(int clientfd);
 int gmt_time_http(char** res, int tam);
 int general_headers(char** res);
 int last_modified_http(char* path, char** res, int tam);
@@ -83,7 +85,7 @@ int process_http(int clientfd){
         sprintf(path_aux, "%.*s", (int)path_len, path);
 
         //DEBUG
-
+        /*
         printf("\033[48;2;%d;%d;%dm", 0, 0, 255);
         printf("\n\nSoy %ld\n", pthread_self());
         printf("request is %d bytes long\n", pret);
@@ -94,7 +96,7 @@ int process_http(int clientfd){
         for (int i = 0; i != num_headers; ++i) {
             printf("%.*s: %.*s\n", (int)headers[i].name_len, headers[i].name,
                    (int)headers[i].value_len, headers[i].value);
-        }
+        }*/
         //END DEBUG
         if(!strcmp(method_aux, "GET")){
             errcode = get_handler(path_aux, headers, num_headers, clientfd);
@@ -106,7 +108,10 @@ int process_http(int clientfd){
         else if(!strcmp(method_aux, "OPTIONS")){
             errcode = options_handler(path_aux, headers, num_headers, clientfd);
         }
-        if(errcode) keep_alive = 0;
+        if(errcode){
+            keep_alive = 0;
+            internal_error_response(clientfd);
+        }
     }
     return method_not_implemented_response(clientfd);
 }
@@ -339,11 +344,10 @@ int not_found_response(int clientfd){
         sprintf(sizestr, "%d", size);
         strcat(response, sizestr);
         strcat(response, "\r\n");
-        strcat(response, "Content-Type: text/html\r\n");
-        strcat(response, "\r\n\r\n");
+        strcat(response, "Content-Type: text/html\r\n\r\n");
     }
     send(clientfd, response, strlen(response), 0);
-    printf("\n%s\n", response);
+    //printf("\n%s\n", response);
     free(response);
     if(html404 >= 0){
         while(offset < size){
@@ -381,55 +385,41 @@ int bad_request_response(int clientfd){
     return EXIT_SUCCESS;
 }
 
-/*int run_script(char* abspath, char* body, char** result){
-    char* ext;
-    char* param;
-    char command[MAXCOMMAND];
-    char script_ext[MAXSCRIPT];
-    char file_url[MAXPATH];
-    FILE* pipe;
-    FILE* fp;
-    ext = strrchr(abspath, '.');
-    param = strrchr(abspath, '?');
-    sprintf(file_url, "%.*s", (int)(param-abspath), abspath);
-    if(__file_exists(file_url)){
+int internal_error_response(int clientfd){
+    char* response = calloc(MAXRESPONSE, sizeof(char));
+    char sizestr[MAXSIZE];
+    int html500, size;
+    off_t offset = 0;
+    if(!response){
         return EXIT_FAILURE;
     }
-    sprintf(script_ext, "%.*s", (int)(param-ext), ext);
-    if(body){
-        fp = fopen(SCRTXT, "w");
-        fwrite(body, sizeof(char), strlen(body), fp);
-        fclose(fp);
+    strcat(response, "HTTP/1.1 500 Internal Server Error\r\n");
+    general_headers(&response);
+    strcat(response, "Content-Length: ");
+    html500 = open(DIR500, O_RDONLY);
+    if(html500 < 0){
+        strcat(response, "0\r\n\r\n");
     }
-    if(!strcmp(script_ext, ".py")){
-        sprintf(command, "python3 %s ", file_url);
-        strcat(command, param+1);
-        strcat(command, " < ");
-        if(body){
-            strcat(command, SCRTXT);
-        }
-        else{
-            strcat(command, "/dev/null");
-        }
-        pipe = popen(command, "r");
-        fread(*result, sizeof(char), MAXRESULT, pipe);
-        pclose(pipe);
+    else{
+        size = get_size(DIR500);
+        sprintf(sizestr, "%d", size);
+        strcat(response, sizestr);
+        strcat(response, "\r\n");
+        strcat(response, "Content-Type: text/html\r\n\r\n");
     }
-    if(!strcmp(script_ext, ".php")){
-        sprintf(command, "php %.*s", (int)(param-abspath), abspath);
-        strcat(command, " < ");
-        if(body){
-            strcat(command, SCRTXT);
+    send(clientfd, response, strlen(response), 0);
+    //printf("\n%s\n", response);
+    free(response);
+    if(html500 >= 0){
+        while(offset < size){
+            sendfile(clientfd, html500, &offset, CHUNK);
         }
-        else{
-            strcat(command, "/dev/null");
-        }
-        pipe = popen(command, "r");
-        fread(*result, sizeof(char), MAXRESULT, pipe);
-        pclose(pipe);
     }
+    if(html500 >= 0)
+        close(html500);
+    free(response);
     return EXIT_SUCCESS;
-}*/
+}
 
 int run_script(char* abspath, char* body, char* result){
     char* ext;
@@ -528,7 +518,6 @@ int send_script_res(char* res, int clientfd){
     strcat(response, "\r\n\r\n");
     strcat(response, http_result);
     if(send(clientfd, response, strlen(response), 0) < 0){
-        printf("falló el send\n");
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
