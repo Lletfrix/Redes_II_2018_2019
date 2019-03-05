@@ -19,25 +19,26 @@ int tcp_listen(char* if_addr, int port){
 
     /*Creamos Socket TCP*/
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        //TODO
+        return -1;
     }
-
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &port, sizeof(int));
     /*Inicializamos Socket*/
     bzero(&sock, sizeof(sock));
     sock.sin_family = AF_INET;
     sock.sin_port = htons(port);
     if(inet_aton(if_addr, &(sock.sin_addr)) == 0){
-        //TODO
+        return -1;
     }
 
     /*Asociamos el Puerto al Socket*/
     if(bind(sockfd, (struct sockaddr*)&sock, sizeof(sock))){
-        //TODO
+        perror("bind");
+        return -1;
     }
 
     /*Escuchamos*/
     if(listen(sockfd, MAXQUEUE)){
-        //TODO
+        return -1;
     }
     return sockfd;
 }
