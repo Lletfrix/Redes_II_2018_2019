@@ -17,6 +17,7 @@
 #define MAXTIME 100
 #define MAXMETHOD 10
 #define MAXSIZE 5
+#define MAXLEN 20
 #define MAXMETH 15
 #define MAXPATH 4096
 #define MAXFILE 999999
@@ -49,8 +50,10 @@ int general_headers(char** res);
 int last_modified_http(char* path, char** res, int tam);
 int get_type(const char* ext, char* res);
 int __file_exists(char* abspath);
-int run_script(char* abspath, char* body, char** result);
+int run_script(char* abspath, char* body, char* result);
 int check_connection(struct phr_header* headers, int num_headers);
+int send_script_res(char* res, int clientfd);
+int __check_ext(const char *check, const char *ext);
 
 int process_http(int clientfd){
     const char *method, *path;
@@ -80,7 +83,7 @@ int process_http(int clientfd){
         sprintf(path_aux, "%.*s", (int)path_len, path);
 
         //DEBUG
-        /*
+
         printf("\033[48;2;%d;%d;%dm", 0, 0, 255);
         printf("\n\nSoy %ld\n", pthread_self());
         printf("request is %d bytes long\n", pret);
@@ -91,7 +94,7 @@ int process_http(int clientfd){
         for (int i = 0; i != num_headers; ++i) {
             printf("%.*s: %.*s\n", (int)headers[i].name_len, headers[i].name,
                    (int)headers[i].value_len, headers[i].value);
-        }*/
+        }
         //END DEBUG
         if(!strcmp(method_aux, "GET")){
             errcode = get_handler(path_aux, headers, num_headers, clientfd);
@@ -225,8 +228,9 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
                 free(type);
                 return EXIT_FAILURE;
             }
-            run_script(abspath, NULL, &result);
-            //Answer
+            run_script(abspath, NULL, result);
+            send_script_res(result, clientfd);
+            free(result);
         }
         else{
             not_found_response(clientfd);
@@ -300,25 +304,18 @@ int options_handler(char* path, struct phr_header* headers, size_t num_headers, 
 }
 
 int post_handler(char* path_aux, struct phr_header* headers, size_t num_headers, int clientfd, char* body){
-    char* ext;
     char* result;
     char abspath[MAXPATH];
-    char script_ext[MAXSCRIPT];
-    ext = strrchr(path_aux, '.');
     sprintf(abspath, "%s", ABSDIR);
-    strcat(abspath, path_aux);
-    if(strrchr(ext, '?')){
-        sprintf(script_ext, "%.*s", (int)(strrchr(ext, '?') - ext), ext);
-        if(!strcmp(script_ext, ".py") || !strcmp(script_ext, ".php")){
-            result = calloc(MAXRESULT, sizeof(char));
-            if(!result){
-                return EXIT_FAILURE;
-            }
-            run_script(abspath, body, &result);
-            //Answer
-        }
+    strcat(abspath, path_aux);//path.ext?dakfjdks
+    result = calloc(MAXRESULT, sizeof(char));
+    if(!result){
+        return EXIT_FAILURE;
     }
-    return EXIT_FAILURE;
+    run_script(abspath, body, result);
+    send_script_res(result, clientfd);
+    free(result);
+    return EXIT_SUCCESS;
 }
 
 int not_found_response(int clientfd){
@@ -382,7 +379,7 @@ int bad_request_response(int clientfd){
     return EXIT_SUCCESS;
 }
 
-int run_script(char* abspath, char* body, char** result){
+/*int run_script(char* abspath, char* body, char** result){
     char* ext;
     char* param;
     char command[MAXCOMMAND];
@@ -430,8 +427,57 @@ int run_script(char* abspath, char* body, char** result){
         pclose(pipe);
     }
     return EXIT_SUCCESS;
+}*/
+
+int run_script(char* abspath, char* body, char* result){
+    char* ext;
+    char* param;
+    char *name = NULL;
+    char command[MAXCOMMAND];
+    FILE* pipe;
+    FILE* fp;
+    ext = strrchr(abspath, '.');
+
+    if(!__check_ext(ext, ".py"))
+        sprintf(command, "python3");
+    else if(!__check_ext(ext, ".php"))
+        sprintf(command, "php");
+    else
+        return EXIT_FAILURE;
+
+    if((param = strrchr(abspath, '?')))
+        param[0] = ' ';
+
+    strcat(command, " ");
+    strcat(command, abspath);
+
+    if(body){
+        name = calloc(1, strlen("out38D7EA4C67FFF.txt\0"));
+        snprintf(name, strlen("out38D7EA4C67FFF.txt"), "out%lx.txt", pthread_self());
+        fp = fopen(name, "w");
+        fwrite(body, sizeof(char), strlen(body), fp);
+        fclose(fp);
+        strcat(command, " < ");
+        strcat(command,  name);
+        free(name);
+    }else{
+        strcat(command, " < /dev/null");
+    }
+    pipe = popen(command, "r");
+    if(!pipe) EXIT_FAILURE;
+    fread(result, sizeof(char), MAXRESULT, pipe);
+    pclose(pipe);
+    return EXIT_SUCCESS;
 }
 
+int __check_ext(const char *check, const char *ext){
+    while(*check && *ext){
+        if(*check != *ext)
+            return EXIT_FAILURE;
+        check++; ext++;
+    }
+    return EXIT_SUCCESS;
+}
 
 int __file_exists(char *name){
     FILE *fp;
@@ -453,4 +499,31 @@ int check_connection(struct phr_header* headers, int num_headers){
         }
     }
     return 0;
+}
+
+int send_script_res(char* res, int clientfd){
+    char response[MAXRESPONSE], http_result[MAXRESULT], len[MAXLEN];
+    char* aux;
+    aux = calloc(MAXAUX, sizeof(char));
+    if(!aux){
+        return EXIT_FAILURE;
+    }
+    sprintf(http_result, "<!DOCTYPE html><html><body>");
+    strcat(http_result, res);
+    strcat(http_result, "</body></html>");
+    sprintf(response, "HTTP/1.1 200 OK\r\n");
+    general_headers(&aux);
+    strcat(response, aux);
+    free(aux);
+    sprintf(len, "%ld", strlen(http_result));
+    strcat(response, "Content-Length: ");
+    strcat(response, len);
+    strcat(response, "\r\nContent-Type: text/html");
+    strcat(response, "\r\n\r\n");
+    strcat(response, http_result);
+    if(send(clientfd, response, strlen(response), 0) < 0){
+        printf("falló el send\n");
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }

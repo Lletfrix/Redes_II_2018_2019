@@ -67,9 +67,12 @@ int main(void){
     struct sockaddr_in client;
     socklen_t addrlen = sizeof(client);
 
+    sockfd = tcp_listen(ip, port);
+
+    if(sockfd < 0) return sockfd;
+
     pool = thrpool_new(15, func);
 
-    sockfd = tcp_listen(ip, port);
     printf("Estamos escuchando\n");
 
     signal(SIGINT, handle_sigint);
