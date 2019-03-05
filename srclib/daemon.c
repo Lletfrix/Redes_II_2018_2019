@@ -2,11 +2,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <signal.h>
 #include <stdlib.h>
 #include "../includes/daemon.h"
 
 int demonizar(const char *service){
-
+    signal(SIGPIPE, SIG_IGN);
     switch (fork()) {
         case -1:
             return(-1);

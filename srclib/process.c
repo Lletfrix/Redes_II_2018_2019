@@ -278,7 +278,8 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
     free(aux);
     free(response);
     free(type);
-    close(filefd);
+    if(filefd >= 0)
+        close(filefd);
     return EXIT_SUCCESS;
 }
 
@@ -349,7 +350,8 @@ int not_found_response(int clientfd){
             sendfile(clientfd, html404, &offset, CHUNK);
         }
     }
-    close(html404);
+    if(html404 >= 0)
+        close(html404);
     return EXIT_SUCCESS;
 }
 
@@ -455,6 +457,10 @@ int run_script(char* abspath, char* body, char* result){
         name = calloc(1, strlen("out38D7EA4C67FFF.txt\0"));
         snprintf(name, strlen("out38D7EA4C67FFF.txt"), "out%lx.txt", pthread_self());
         fp = fopen(name, "w");
+        if(!fp){
+            free(name);
+            return EXIT_FAILURE;
+        }
         fwrite(body, sizeof(char), strlen(body), fp);
         fclose(fp);
         strcat(command, " < ");
