@@ -51,7 +51,7 @@ else:
     parser.print_help()
 
 def create_id_routine(name, email, alias=None): #alias sirve para algo?
-    print('Generando par de claves RSA de 2048 bits...'')
+    print('Generando par de claves RSA de 2048 bits...')
     #generate public key
     print('OK')
     params = {'nombre': name, 'email': email, 'publicKey': pk};
