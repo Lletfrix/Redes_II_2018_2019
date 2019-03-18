@@ -1,24 +1,23 @@
 import argparse as arg
-import json as js
-import requests as req
-from functionalities import * 
+from functionalities import *
+import sys
 
 parser = arg.ArgumentParser(description = 'Cliente para realizar diversas acciones en el servidor SecureBox')
 parser.add_argument('--source_id', nargs=1)
 parser.add_argument('--dest_id', nargs=1)
-group = parser.add_mutually_exclusive_group()
-group.add_argument('--create_id', nargs='*')
-group.add_argument('--search_id', nargs=1)
-group.add_argument('--delete_id', nargs=1)
-group.add_argument('--upload', nargs=1)
-group.add_argument('--list_files', action='store_true')
-group.add_argument('--download', nargs=1)
-group.add_argument('--delete_file', nargs=1)
-group.add_argument('--encrypt', nargs=1)
-group.add_argument('--sign', nargs=1)
-group.add_argument('--enc_sign', nargs=1)
+actions = parser.add_mutually_exclusive_group(required=True)
+actions.add_argument('--create_id', nargs='*')
+actions.add_argument('--search_id', nargs=1)
+actions.add_argument('--delete_id', nargs=1)
+actions.add_argument('--upload', nargs=1)
+actions.add_argument('--list_files', action='store_true')
+actions.add_argument('--download', nargs=1)
+actions.add_argument('--delete_file', nargs=1)
+actions.add_argument('--encrypt', nargs=1)
+actions.add_argument('--sign', nargs=1)
+actions.add_argument('--enc_sign', nargs=1)
 
-args = parser.parse_args()
+args = parser.parse_args(sys.argv[1:])
 if args.create_id:
     if len(args.create_id) == 2:
         create_id_routine(args.create_id[0], args.create_id[1])
