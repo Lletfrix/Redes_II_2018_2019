@@ -37,8 +37,10 @@ elif args.upload:
     print('shit\n')
     #upload routine
 elif args.list_files:
-    print('shit\n')
-    #list_files routine
+    found = list_files_routine()
+    if found:
+        print(len(found['files_list']), 'ficheros encontrados')
+        print_found_files(found['files_list'])
 elif args.download:
     print('shit\n')
     #download routine
