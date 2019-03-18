@@ -27,8 +27,10 @@ if args.create_id:
         print('create_id requires 2 or 3 arguments\n')
         parser.print_help()
 elif args.search_id:
-    print('shit\n')
-    #search_id routine
+    found = search_id_routine(args.search_id[0])
+    if found:
+        print(len(found), ' usuarios encontrados')
+        print_found_users(found)
 elif args.delete_id:
     delete_id_routine(args.delete_id[0])
 elif args.upload:
