@@ -48,6 +48,17 @@ def delete_id_routine(userID):
     if code is 200:
         print('OK')
 
+def upload_routine(uri):
+    if os.path.isfile(uri):
+        f = open(uri, 'rb')
+        content = read(f)
+        url = build_url('up')
+        resp = req.post(url, headers=headers, data=content)
+        #TODO: Checkings
+    else:
+        print('El uri proporcionado es incorrecto')
+
+
 def search_id_routine(string):
     print('Buscando coincidencias con: <<', string,'>> en el servidor')
     params={'data_search':string}

@@ -34,8 +34,7 @@ elif args.search_id:
 elif args.delete_id:
     delete_id_routine(args.delete_id[0])
 elif args.upload:
-    print('shit\n')
-    #upload routine
+    upload_routine(args.upload[0])
 elif args.list_files:
     found = list_files_routine()
     if found:
