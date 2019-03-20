@@ -59,6 +59,26 @@ def search_id_routine(string):
         return resp.json()
     return None
 
+def list_files_routine():
+    print('Obteniendo la lista de ficheros subidos...')
+    url = build_url('list')
+    resp = req.post(url, headers=headers)
+    code = code_checker(resp)
+    if code is 200:
+        print('OK')
+        return resp.json()
+    return None
+
+def download_routine(fileid):
+    print('Obteniendo el fichero del servidor...')
+    url = build_url('up')
+    params = {'file_id':fileid}
+    resp = req.post(url, json=params, headers=headers)
+    code = code_checker(resp)
+    if code is 200:
+        print('OK')
+        # TODO: Guardar fichero
+
 def code_checker(resp):
     if resp.status_code is 200:
         return 200
@@ -75,6 +95,11 @@ def print_found_users(found):
     for rec in found:
         print('['+str(i)+']', rec['nombre'], ',', rec['email'], ', ID:', rec['userID'])
         i+=1
+
+def print_found_files(found):
+    i=1
+    for rec in found:
+        print('['+str(i)+']', rec['id'])
 
 def search_on_sv(string):
     params={'data_search':string}
