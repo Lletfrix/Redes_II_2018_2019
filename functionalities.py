@@ -71,13 +71,23 @@ def list_files_routine():
 
 def download_routine(fileid):
     print('Obteniendo el fichero del servidor...')
-    url = build_url('up')
+    url = build_url('dwn')
     params = {'file_id':fileid}
     resp = req.post(url, json=params, headers=headers)
     code = code_checker(resp)
     if code is 200:
         print('OK')
         # TODO: Guardar fichero
+
+def delete_file_routine(fileid):
+    print('Borrando el archivo del servidor...')
+    url = build_url('filedelete')
+    params = {'file_id':fileid}
+    resp = req.post(url, json=params, headers=headers)
+    code = code_checker(resp)
+    jresp = resp.json()
+    if code == 200:
+        print('El fichero ' + jresp['file_id'] + ' ha sido borrado satisfactoriamente')
 
 def code_checker(resp):
     if resp.status_code is 200:

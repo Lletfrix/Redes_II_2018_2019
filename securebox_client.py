@@ -44,8 +44,7 @@ elif args.list_files:
 elif args.download:
     download_routine(args.download[0])
 elif args.delete_file:
-    print('shit\n')
-    #delete_file routine
+    delete_file_routine(args.delete_file[0])
 elif args.encrypt:
     print('shit\n')
     #encrypt routine
