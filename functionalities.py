@@ -69,6 +69,16 @@ def list_files_routine():
         return resp.json()
     return None
 
+def download_routine(fileid):
+    print('Obteniendo el fichero del servidor...')
+    url = build_url('up')
+    params = {'file_id':fileid}
+    resp = req.post(url, json=params, headers=headers)
+    code = code_checker(resp)
+    if code is 200:
+        print('OK')
+        # TODO: Guardar fichero
+
 def code_checker(resp):
     if resp.status_code is 200:
         return 200
