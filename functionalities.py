@@ -120,7 +120,7 @@ def print_found_users(found):
 def print_found_files(found):
     i=1
     for rec in found:
-        print('['+str(i)+']', rec['id'])
+        print('['+str(i)+']', rec['fileID'], rec['fileName'])
 
 def search_on_sv(string):
     params={'data_search':string}
