@@ -1,6 +1,7 @@
 import requests as req
 from Crypto.PublicKey import RSA
 import json
+import os
 
 api_url = 'http://vega.ii.uam.es:8080/api/'
 headers = {'content-type': 'application/json', 'authorization': 'Bearer 5BCd38106c97FEbA'}
@@ -51,9 +52,11 @@ def delete_id_routine(userID):
 def upload_routine(uri):
     if os.path.isfile(uri):
         f = open(uri, 'rb')
-        content = read(f)
         url = build_url('up')
-        resp = req.post(url, headers=headers, data=content)
+        headers = {'authorization': 'Bearer 5BCd38106c97FEbA'} #Quitamos el content-type json
+        #TODO: Encrypt
+        files = {'ufile': (uri, open(uri, 'rb'))}
+        resp = req.post(url, headers=headers, files=files)
         #TODO: Checkings
     else:
         print('El uri proporcionado es incorrecto')
@@ -121,6 +124,7 @@ def print_found_files(found):
     i=1
     for rec in found:
         print('['+str(i)+']', rec['fileID'], rec['fileName'])
+        i+=1
 
 def search_on_sv(string):
     params={'data_search':string}
