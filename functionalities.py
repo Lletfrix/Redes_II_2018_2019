@@ -90,8 +90,11 @@ def download_routine(fileid):
     resp = req.post(url, json=params, headers=headers)
     code = code_checker(resp)
     if code is 200:
-        print('OK')
-        # TODO: Guardar fichero
+        #TODO: Check signature and decrypt
+        print('Fichero obtenido. Guardando fichero en disco...')
+        f = open(fileid + '.txt', 'w+')
+        f.write(resp.text)
+        print('Fichero con ID: ' + fileid + ' guardado correctamente.')
 
 def delete_file_routine(fileid):
     print('Borrando el archivo del servidor...')
