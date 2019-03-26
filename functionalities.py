@@ -51,7 +51,8 @@ def delete_id_routine(userID):
 def upload_routine(path, private_key, public_key):
     if os.path.isfile(path):
         url = build_url('up')
-        headers = {'authorization': 'Bearer 5BCd38106c97FEbA'} #Quitamos el content-type json
+        up_headers = dict(headers)
+        up_headers.pop('content-type') #Quitamos el content-type json
         #Encrypt
         doc = docusign(path)
         doc.get_digital_sign(private_key)
@@ -60,7 +61,10 @@ def upload_routine(path, private_key, public_key):
         doc.prepare_upload()
         #Send file
         files = {'ufile': (path, doc.ciphered)}
-        resp = req.post(url, headers=headers, files=files)
+        resp = req.post(url, headers=up_headers, files=files)
+        code = code_checker(resp)
+        if code is 200:
+            print('OK')
         #TODO: Checkings
     else:
         print('La ruta proporcionada es incorrecta')
@@ -87,7 +91,7 @@ def list_files_routine():
         return resp.json()
     return None
 
-def download_routine(fileid, public_key):
+def download_routine(fileid, private_key, public_key):
     print('Obteniendo el fichero del servidor...')
     url = build_url('dwn')
     params = {'file_id':fileid}
@@ -96,7 +100,7 @@ def download_routine(fileid, public_key):
     if code is 200:
         #Decrypt
         doc = docusign(None, resp.text)
-        doc.get_session_key()
+        doc.get_session_key(private_key)
         doc.decipher()
         if not doc.verify_signature(public_key):
             print('La firma digital no coincide con el hash')

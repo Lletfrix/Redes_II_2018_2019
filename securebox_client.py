@@ -58,6 +58,8 @@ elif args.list_files:
         print_found_files(found['files_list'])
 elif args.download:
     if(args.source_id):
+        f = open(keypath, 'rb')
+        private_key = RSA.import_key(f.read())
         pkPEM = get_publicKey(args.source_id[0])
         public_key = RSA.import_key(pkPEM)
         download_routine(args.download[0], public_key)
