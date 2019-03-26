@@ -26,8 +26,11 @@ class docusign:
             self.content = None
             self.session_key = None
 
+    def generate_hash(self):
+        self.hash.update(self.content)
+
     def get_digital_sign(self, private_key):
-        self.hash.update(self.content);
+        self.generate_hash()
         self.digital_sign = pkcs1_15.new(private_key).sign(self.hash)
 
     def cipher(self, private_key):
@@ -54,3 +57,11 @@ class docusign:
         binary = unpad(cipher_aes.decrypt(self.ciphered[16:]), 16)
         self.digital_sign = binary[:256]
         self.content = binary[256:]
+        self.generate_hash()
+
+    def verify_signature(public_key):
+        try:
+            pkcs1_15.new(public_key).verify(self.hash, self.digital_sign)
+        except ValueError:
+            return False
+        return True
