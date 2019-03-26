@@ -2,7 +2,7 @@ import requests as req
 from Crypto.PublicKey import RSA
 import json
 import os
-import document_sign import *
+from document_sign import *
 
 api_url = 'http://vega.ii.uam.es:8080/api/'
 headers = {'content-type': 'application/json', 'authorization': 'Bearer 5BCd38106c97FEbA'}
@@ -89,14 +89,21 @@ def list_files_routine():
         return resp.json()
     return None
 
-def download_routine(fileid):
+def download_routine(fileid, public_key):
     print('Obteniendo el fichero del servidor...')
     url = build_url('dwn')
     params = {'file_id':fileid}
     resp = req.post(url, json=params, headers=headers)
     code = code_checker(resp)
     if code is 200:
-        #TODO: Check signature and decrypt
+        #Decrypt
+        doc = docusign(None, resp.text)
+        doc.get_session_key()
+        doc.decipher()
+        if not doc.verify_signature(public_key):
+            print('La firma digital no coincide con el hash')
+            return
+
         print('Fichero obtenido. Guardando fichero en disco...')
         f = open(fileid + '.txt', 'w+')
         f.write(resp.text)
