@@ -21,7 +21,7 @@ class docusign:
         else:
             self.digital_envelope = bin[:256]
             self.ciphered = bin[256:]
-            self.hash = None
+            self.hash = SHA256.new()
             self.digital_sign = None
             self.content = None
             self.session_key = None
@@ -59,7 +59,7 @@ class docusign:
         self.content = binary[256:]
         self.generate_hash()
 
-    def verify_signature(public_key):
+    def verify_signature(self, public_key):
         try:
             pkcs1_15.new(public_key).verify(self.hash, self.digital_sign)
         except ValueError:

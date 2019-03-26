@@ -99,7 +99,7 @@ def download_routine(fileid, private_key, public_key):
     code = code_checker(resp)
     if code is 200:
         #Decrypt
-        doc = docusign(None, resp.text)
+        doc = docusign(None, resp.content)
         doc.get_session_key(private_key)
         doc.decipher()
         if not doc.verify_signature(public_key):
