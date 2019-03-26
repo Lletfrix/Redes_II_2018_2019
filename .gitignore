@@ -1,2 +1,4 @@
  __pycache__/*
 *.pyc
+private_key.pem
+token.txt
