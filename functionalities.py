@@ -5,7 +5,7 @@ import os
 from document_sign import *
 
 api_url = 'http://vega.ii.uam.es:8080/api/'
-headers = {'content-type': 'application/json', 'authorization': 'Bearer 5BCd38106c97FEbA'}
+headers = {'content-type': 'application/json', 'authorization': None}
 endpoints = {'create':'users/register', 'userdelete':'users/delete', 'search':'users/search',
               'getpk':'users/getPublicKey', 'up':'files/upload', 'dwn':'files/download',
                'list':'files/list', 'filedelete':'files/delete'}
@@ -15,7 +15,6 @@ def build_url(key):
 
 def create_id_routine(name, email, alias=None): #alias sirve para algo?
     print('Generando par de claves RSA de 2048 bits...')
-
     rsaKey = RSA.generate(2048)
     pkPEM = rsaKey.publickey().exportKey().decode('ascii') #Get pem format
 
@@ -29,7 +28,7 @@ def create_id_routine(name, email, alias=None): #alias sirve para algo?
     code = code_checker(resp)
     if code is 200:
         jresp = resp.json()
-        found = search_on_sv(jresp['nombre'])
+        found = search_users_on_sv(jresp['nombre'])
         if code_checker(found) is 200:
             jfound = found.json()
             for rec in jfound:
@@ -37,7 +36,6 @@ def create_id_routine(name, email, alias=None): #alias sirve para algo?
                    rec['publicKey'] == pkPEM:
                    print('Identidad con ID#' +  rec['userID'] + ' creada correctamente')
                    break
-        #print(rsaKey.exportKey()) #TODO: Guardar clave privada en algun lado
         return rsaKey
     return None
 
@@ -72,7 +70,7 @@ def search_id_routine(string):
     print('Buscando coincidencias con: <<', string,'>> en el servidor')
     params={'data_search':string}
     url = build_url('search')
-    resp = search_on_sv(string)
+    resp = search_users_on_sv(string)
     code = code_checker(resp)
     if code is 200:
         print('OK')
@@ -105,8 +103,8 @@ def download_routine(fileid, public_key):
             return
 
         print('Fichero obtenido. Guardando fichero en disco...')
-        f = open(fileid + '.txt', 'w+')
-        f.write(resp.text)
+        f = open(fileid + '.txt', 'wb')
+        f.write(doc.content)
         print('Fichero con ID: ' + fileid + ' guardado correctamente.')
 
 def delete_file_routine(fileid):
@@ -142,8 +140,16 @@ def print_found_files(found):
         print('['+str(i)+']', rec['fileID'], rec['fileName'])
         i+=1
 
-def search_on_sv(string):
+def search_users_on_sv(string):
     params={'data_search':string}
     url = build_url('search')
     resp = req.post(url, json=params, headers=headers)
     return resp
+
+def get_publicKey(user_id):
+    url = build_url('getpk')
+    params = {'userID':user_id}
+    resp = req.post(url, json=params, headers=headers)
+    code = code_checker(resp)
+    jresp = resp.json()
+    return jresp['publicKey']
