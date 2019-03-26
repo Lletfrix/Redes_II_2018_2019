@@ -19,9 +19,8 @@ class docusign:
             self.ciphered = None
             self.session_key = get_random_bytes(32)
         else:
-            (self.path, self.ciphered) = pickle.load(bin)
-            self.digital_envelope = self.ciphered[:2048]
-            self.ciphered = self.ciphered[2048:]
+            self.digital_envelope = bin[:256]
+            self.ciphered = bin[256:]
             self.hash = None
             self.digital_sign = None
             self.content = None
@@ -45,13 +44,13 @@ class docusign:
     def prepare_upload(self):
         self.ciphered = self.digital_envelope + self.ciphered
 
-    def get_session_key(self, public_key):
-        cipher_rsa = PKCS1_OAEP.new(public_key)
+    def get_session_key(self, private_key):
+        cipher_rsa = PKCS1_OAEP.new(private_key)
         self.session_key = cipher_rsa.decrypt(self.digital_envelope)
 
     def decipher(self):
         iv = self.ciphered[:16]
         cipher_aes = AES.new(self.session_key, AES.MODE_CBC, iv=iv)
-        binary = unpad(cipher_aes.decrypt(self.ciphered))
+        binary = unpad(cipher_aes.decrypt(self.ciphered[16:]), 16)
         self.digital_sign = binary[:256]
         self.content = binary[256:]
