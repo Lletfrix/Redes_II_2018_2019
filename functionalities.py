@@ -50,14 +50,15 @@ def delete_id_routine(userID):
     if code is 200:
         print('OK')
 
-def upload_routine(path, private_key):
+def upload_routine(path, private_key, public_key):
     if os.path.isfile(path):
         url = build_url('up')
         headers = {'authorization': 'Bearer 5BCd38106c97FEbA'} #Quitamos el content-type json
         #Encrypt
         doc = docusign(path)
-        doc.digital_sign(private_key)
+        doc.get_digital_sign(private_key)
         doc.cipher(private_key)
+        doc.get_digital_envelope(public_key)
         doc.prepare_upload()
         #Send file
         files = {'ufile': (path, doc.ciphered)}
