@@ -62,7 +62,7 @@ elif args.download:
         private_key = RSA.import_key(f.read())
         pkPEM = get_publicKey(args.source_id[0])
         public_key = RSA.import_key(pkPEM)
-        download_routine(args.download[0], public_key)
+        download_routine(args.download[0], private_key, public_key)
     else:
         print('El parámetro --source_id es necesario para poder descargar el fichero')
         parser.print_help()
