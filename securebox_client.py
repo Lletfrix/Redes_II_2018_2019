@@ -3,7 +3,10 @@ from functionalities import *
 import sys
 
 tok = open('token.txt', 'r')
-headers['authorization'] = 'Bearer ' + tok.read()[:-1]
+tokenstr = tok.read()
+if tokenstr[-1] is '\n':
+    tokenstr = tokenstr[:-1]
+headers['authorization'] = 'Bearer ' + tokenstr
 keypath = 'private_key.pem'
 
 parser = arg.ArgumentParser(description = 'Cliente para realizar diversas acciones en el servidor SecureBox')
