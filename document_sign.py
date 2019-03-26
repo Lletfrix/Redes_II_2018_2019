@@ -1,4 +1,3 @@
-import pickle
 from Crypto.Hash import SHA256
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Signature import pkcs1_15
@@ -12,7 +11,7 @@ class docusign:
         self.hash = SHA256.new()
         self.digital_sign = None
         with open(path, 'rb') as data:
-            self.content = pickle.load(data)
+            self.content = data.read()
         self.ciphered = None
         self.session_key = get_random_bytes(32)
 
@@ -26,7 +25,7 @@ class docusign:
         binary = self.digital_sign + self.content
         self.ciphered=pad(binary, 16)
         self.ciphered=cipher_aes.encrypt(self.ciphered)
-
+        #self.ciphered = iv + self.chipered
     def digital_envelope(self, public_key):
         cipher_rsa = PKCS1_OAEP.new(public_key)
         self.digital_envelope = cipher_rsa.encrypt(self.session_key)
