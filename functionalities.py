@@ -2,6 +2,7 @@ import requests as req
 from Crypto.PublicKey import RSA
 import json
 import os
+import document_sign import *
 
 api_url = 'http://vega.ii.uam.es:8080/api/'
 headers = {'content-type': 'application/json', 'authorization': 'Bearer 5BCd38106c97FEbA'}
@@ -49,17 +50,21 @@ def delete_id_routine(userID):
     if code is 200:
         print('OK')
 
-def upload_routine(uri):
-    if os.path.isfile(uri):
-        f = open(uri, 'rb')
+def upload_routine(path, private_key):
+    if os.path.isfile(path):
         url = build_url('up')
         headers = {'authorization': 'Bearer 5BCd38106c97FEbA'} #Quitamos el content-type json
-        #TODO: Encrypt
-        files = {'ufile': (uri, open(uri, 'rb'))}
+        #Encrypt
+        doc = docusign(path)
+        doc.digital_sign(private_key)
+        doc.cipher(private_key)
+        doc.prepare_upload()
+        #Send file
+        files = {'ufile': (path, doc.ciphered)}
         resp = req.post(url, headers=headers, files=files)
         #TODO: Checkings
     else:
-        print('El uri proporcionado es incorrecto')
+        print('La ruta proporcionada es incorrecta')
 
 
 def search_id_routine(string):
