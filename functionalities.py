@@ -107,7 +107,8 @@ def download_routine(fileid, private_key, public_key):
             return
 
         print('Fichero obtenido. Guardando fichero en disco...')
-        f = open(fileid + '.txt', 'wb')
+        filename = resp.headers['content-disposition'].split('\"')[-2]
+        f = open(filename, 'wb')
         f.write(doc.content)
         print('Fichero con ID: ' + fileid + ' guardado correctamente.')
 
