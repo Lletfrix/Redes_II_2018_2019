@@ -9,6 +9,23 @@ if tokenstr[-1] is '\n':
 headers['authorization'] = 'Bearer ' + tokenstr
 keypath = 'private_key.pem'
 
+
+
+def load_private_key():
+    f = open(keypath, 'rb')
+    print('Leyendo su clave privada...', end='')
+    private_key = RSA.import_key(f.read())
+    print('OK')
+    return private_key
+
+def load_public_key(user_id):
+    print('Obteniendo clave pública del destinatario...', end='')
+    pkPEM = get_publicKey(user_id)
+    print('OK')
+    public_key = RSA.import_key(pkPEM)
+    return public_key
+
+
 parser = arg.ArgumentParser(description = 'Cliente para realizar diversas acciones en el servidor SecureBox')
 parser.add_argument('--source_id', nargs=1)
 parser.add_argument('--dest_id', nargs=1)
@@ -46,13 +63,8 @@ elif args.delete_id:
     delete_id_routine(args.delete_id[0])
 elif args.upload:
     if(args.dest_id):
-        f = open(keypath, 'rb')
-        print('Leyendo su clave privada...', end='')
-        private_key = RSA.import_key(f.read())
-        print('OK')
-        print('Obteniendo clave pública del destinatario', end='')
-        pkPEM = get_publicKey(args.dest_id[0])
-        public_key = RSA.import_key(pkPEM)
+        private_key = load_private_key()
+        public_key = load_public_key(args.dest_id[0])
         upload_routine(args.upload[0], private_key, public_key)
     else:
         print('El parámetro --dest_id es necesario para poder subir el fichero')
@@ -64,10 +76,8 @@ elif args.list_files:
         print_found_files(found['files_list'])
 elif args.download:
     if(args.source_id):
-        f = open(keypath, 'rb')
-        private_key = RSA.import_key(f.read())
-        pkPEM = get_publicKey(args.source_id[0])
-        public_key = RSA.import_key(pkPEM)
+        private_key = load_private_key()
+        public_key = load_public_key(args.source_id[0])
         download_routine(args.download[0], private_key, public_key)
     else:
         print('El parámetro --source_id es necesario para poder descargar el fichero')
@@ -75,10 +85,15 @@ elif args.download:
 elif args.delete_file:
     delete_file_routine(args.delete_file[0])
 elif args.encrypt:
-    encrypt_routine(args.encrypt[0])
+    private_key = load_private_key()
+    public_key = load_public_key(args.dest_id[0])
+    encrypt_routine(args.encrypt[0], private_key, public_key)
 elif args.sign:
-    sign_routine(args.sign[0])
+    private_key = load_private_key()
+    sign_routine(args.sign[0], private_key)
 elif args.enc_sign:
-    enc_sign_routine(args.enc_sign[0])
+    private_key = load_private_key()
+    public_key = load_public_key(args.dest_id[0])
+    enc_sign_routine(args.enc_sign[0], private_key, public_key)
 else:
     parser.print_help()
