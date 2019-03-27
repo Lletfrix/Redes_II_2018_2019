@@ -4,3 +4,4 @@ private_key.pem
 token.txt
 *.zip
 *.rar
+*.jpg*
