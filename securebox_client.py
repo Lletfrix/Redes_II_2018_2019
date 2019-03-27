@@ -75,13 +75,10 @@ elif args.download:
 elif args.delete_file:
     delete_file_routine(args.delete_file[0])
 elif args.encrypt:
-    print('shit\n')
-    #encrypt routine
+    encrypt_routine(args.encrypt[0])
 elif args.sign:
-    print('shit\n')
-    #sign routine
+    sign_routine(args.sign[0])
 elif args.enc_sign:
-    print('shit\n')
-    #enc_sign routine
+    enc_sign_routine(args.enc_sign[0])
 else:
     parser.print_help()
