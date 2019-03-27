@@ -14,7 +14,7 @@ def build_url(key):
     return api_url+endpoints[key]
 
 def create_id_routine(name, email, alias=None): #alias sirve para algo?
-    print('Generando par de claves RSA de 2048 bits...')
+    print('Generando par de claves RSA de 2048 bits...', end='')
     rsaKey = RSA.generate(2048)
     pkPEM = rsaKey.publickey().exportKey().decode('ascii') #Get pem format
 
@@ -40,7 +40,7 @@ def create_id_routine(name, email, alias=None): #alias sirve para algo?
     return None
 
 def delete_id_routine(userID):
-    print('Borrando usuario con ID#', userID, '...')
+    print('Borrando usuario con ID#', userID, '...', end='')
     params = {'userID':userID}
     url = build_url('userdelete')
     resp = req.post(url, json=params, headers=headers)
@@ -54,10 +54,19 @@ def upload_routine(path, private_key, public_key):
         up_headers = dict(headers)
         up_headers.pop('content-type') #Quitamos el content-type json
         #Encrypt
+        print('Obteniendo fichero...', end='')
         doc = docusign(path)
+        print('OK')
+        print('Generando firma digital...', end='')
         doc.get_digital_sign(private_key)
+        print('OK')
+        print('Cifrando fichero...', end='')
         doc.cipher(private_key)
+        print('OK')
+        print('Generando sobre digital...', end='')
         doc.get_digital_envelope(public_key)
+        print('OK')
+        print('Subiendo fichero...', end='')
         doc.prepare_upload()
         #Send file
         files = {'ufile': (path, doc.ciphered)}
@@ -65,7 +74,7 @@ def upload_routine(path, private_key, public_key):
         code = code_checker(resp)
         if code is 200:
             print('OK')
-        #TODO: Checkings
+        #TODO: Checkings and print file_id
     else:
         print('La ruta proporcionada es incorrecta')
 
@@ -82,7 +91,7 @@ def search_id_routine(string):
     return None
 
 def list_files_routine():
-    print('Obteniendo la lista de ficheros subidos...')
+    print('Obteniendo la lista de ficheros subidos...', end='')
     url = build_url('list')
     resp = req.post(url, headers=headers)
     code = code_checker(resp)
@@ -92,7 +101,7 @@ def list_files_routine():
     return None
 
 def download_routine(fileid, private_key, public_key):
-    print('Obteniendo el fichero del servidor...')
+    print('Obteniendo el fichero del servidor...', end='')
     url = build_url('dwn')
     params = {'file_id':fileid}
     resp = req.post(url, json=params, headers=headers)
@@ -103,22 +112,24 @@ def download_routine(fileid, private_key, public_key):
         doc.get_session_key(private_key)
         doc.decipher()
         if not doc.verify_signature(public_key):
-            print('La firma digital no coincide con el hash')
+            print('\n La firma digital no coincide con el hash')
             return
-
+        print('OK')
         print('Fichero obtenido. Guardando fichero en disco...')
-        f = open(fileid + '.txt', 'wb')
+        filename = resp.headers['content-disposition'].split('\"')[-2]
+        f = open(filename, 'wb')
         f.write(doc.content)
-        print('Fichero con ID: ' + fileid + ' guardado correctamente.')
+        print('Fichero con ID: ' + fileid + ' guardado correctamente con nombre: ' + filename)
 
 def delete_file_routine(fileid):
-    print('Borrando el archivo del servidor...')
+    print('Borrando el archivo del servidor...', end='')
     url = build_url('filedelete')
     params = {'file_id':fileid}
     resp = req.post(url, json=params, headers=headers)
     code = code_checker(resp)
     jresp = resp.json()
     if code == 200:
+        print('OK')
         print('El fichero ' + jresp['file_id'] + ' ha sido borrado satisfactoriamente')
 
 def code_checker(resp):
@@ -126,6 +137,7 @@ def code_checker(resp):
         return 200
     else:
         json_resp = resp.json()
+        print('\n Ha ocurrido un error. Código de error:')
         print(json_resp['error_code'], '\n')
         print(json_resp['description'], '\n')
         err_code = json_resp['error_code']

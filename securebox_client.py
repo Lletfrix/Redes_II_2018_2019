@@ -47,12 +47,15 @@ elif args.delete_id:
 elif args.upload:
     if(args.dest_id):
         f = open(keypath, 'rb')
+        print('Leyendo su clave privada...', end='')
         private_key = RSA.import_key(f.read())
+        print('OK')
+        print('Obteniendo clave pública del destinatario', end='')
         pkPEM = get_publicKey(args.dest_id[0])
         public_key = RSA.import_key(pkPEM)
         upload_routine(args.upload[0], private_key, public_key)
     else:
-        print('El parámetro --source_id es necesario para poder descargar el fichero')
+        print('El parámetro --dest_id es necesario para poder subir el fichero')
         parser.print_help()
 elif args.list_files:
     found = list_files_routine()
@@ -72,13 +75,10 @@ elif args.download:
 elif args.delete_file:
     delete_file_routine(args.delete_file[0])
 elif args.encrypt:
-    print('shit\n')
-    #encrypt routine
+    encrypt_routine(args.encrypt[0])
 elif args.sign:
-    print('shit\n')
-    #sign routine
+    sign_routine(args.sign[0])
 elif args.enc_sign:
-    print('shit\n')
-    #enc_sign routine
+    enc_sign_routine(args.enc_sign[0])
 else:
     parser.print_help()
