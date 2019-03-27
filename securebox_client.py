@@ -47,7 +47,10 @@ elif args.delete_id:
 elif args.upload:
     if(args.dest_id):
         f = open(keypath, 'rb')
+        print('Leyendo su clave privada...', end='')
         private_key = RSA.import_key(f.read())
+        print('OK')
+        print('Obteniendo clave pública del destinatario', end='')
         pkPEM = get_publicKey(args.dest_id[0])
         public_key = RSA.import_key(pkPEM)
         upload_routine(args.upload[0], private_key, public_key)
