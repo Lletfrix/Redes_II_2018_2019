@@ -55,7 +55,7 @@ elif args.upload:
         public_key = RSA.import_key(pkPEM)
         upload_routine(args.upload[0], private_key, public_key)
     else:
-        print('El parámetro --source_id es necesario para poder descargar el fichero')
+        print('El parámetro --dest_id es necesario para poder subir el fichero')
         parser.print_help()
 elif args.list_files:
     found = list_files_routine()
