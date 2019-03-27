@@ -74,7 +74,8 @@ def upload_routine(path, private_key, public_key):
         code = code_checker(resp)
         if code is 200:
             print('OK')
-        #TODO: Checkings and print file_id
+            file_id = resp.json()['file_id']
+            print('Subida realizada correctamente, ID del fichero:', file_id)
     else:
         print('La ruta proporcionada es incorrecta')
 
@@ -169,3 +170,35 @@ def get_publicKey(user_id):
     code = code_checker(resp)
     jresp = resp.json()
     return jresp['publicKey']
+
+def encrypt_routine(path, private_key, public_key):
+    doc = docusign(path)
+    doc.encrypt(public_key)
+    doc.get_digital_envelope(private_key)
+    f = open(path+'.enc', 'wb')
+    f.write(doc.iv+doc.digital_envelope+doc.ciphered)
+
+def sign_routine(path, private_key):
+    doc = docusign(path)
+    doc.get_digital_sign(private_key)
+    f = open(path+'.sgn', 'wb')
+    f.write(doc.digital_sign+doc.content)
+
+def enc_sign_routine(path, private_key, public_key):
+    doc = docusign(path)
+    print('Obteniendo fichero...', end='')
+    doc = docusign(path)
+    print('OK')
+    print('Generando firma digital...', end='')
+    doc.get_digital_sign(private_key)
+    print('OK')
+    print('Cifrando fichero...', end='')
+    doc.cipher(private_key)
+    print('OK')
+    print('Generando sobre digital...', end='')
+    doc.get_digital_envelope(public_key)
+    print('OK')
+    print('Escribiendo fichero...', end='')
+    doc.prepare_upload()
+    f = open(path+'.enc.sgn', 'wb')
+    f.write(doc.ciphered)
