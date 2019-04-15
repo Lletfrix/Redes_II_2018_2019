@@ -4,11 +4,17 @@ from PIL import Image, ImageTk
 import numpy as np
 import cv2
 import socket
+import requests
+import getpass
 
-MAX_SIZE = 65535
+MAX_SIZE = 1048576
 ds_addr = ("vega.ii.uam.es", 8000)
 get_users = b"LIST_USERS"
 quit = b"QUIT"
+ds_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+ds_sock.connect(ds_addr)
+versions = "V1"
+port = "15951" #Random, maybe we can ask the user for it
 
 class VideoClient(object):
 
@@ -79,6 +85,8 @@ class VideoClient(object):
 
         if button == "Salir":
             # Salimos de la aplicación
+            ds_sock.sendall(quit)
+            ds_sock.close()
             self.app.stop()
         elif button == "Conectar":
             # Entrada del nick del usuario a conectar
@@ -88,12 +96,9 @@ class VideoClient(object):
         elif button == "Colgar":
             pass
         elif button == "Usuarios":
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect(ds_addr)
-            sock.sendall(get_users)
-            users = sock.recv(MAX_SIZE)
-            sock.sendall(quit)
-            sock.close()
+            ds_sock.sendall(get_users)
+            users = ds_sock.recv(MAX_SIZE)
+
             if users[:3] == b"NOK":
                 self.app.infoBox("Error", "No hay ningún usuario registrado")
             else:
@@ -121,7 +126,26 @@ if __name__ == '__main__':
     # Crear aquí los threads de lectura, de recepción y,
     # en general, todo el código de inicialización que sea necesario
     # ...
-
+    nick = input("Introduce tu nick: ")
+    passw = getpass.getpass("Introduce tu contraseña: ")
+    pub_or_priv = None
+    while pub_or_priv != "B" and pub_or_priv != "V":
+        pub_or_priv = input("Introduce B para usar tu ip pública o V para usar tu ip privada: ")
+    if pub_or_priv == "B":
+        ip = requests.get("http://ipecho.net/plain?").text
+    else:
+        ip = [l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2]
+        if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0],
+        s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]    #Gotten from Stackoverflow
+    message = "REGISTER " + nick + " " + ip + " " + port + " " + passw + " " + versions
+    binm = bytes(message, "utf-8")
+    ds_sock.sendall(binm)
+    resp = ds_sock.recv(MAX_SIZE)
+    print(resp)
+    if resp[:3].decode("utf-8") == "NOK":
+        print("La contraseña introducida es incorrecta.")
+        exit()
+    print("Bienvenido " + nick + ", tu cuenta ha sido registrada o actualizada correctamente.")
 
     # Lanza el bucle principal del GUI
     # El control ya NO vuelve de esta función, por lo que todas las
