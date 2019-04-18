@@ -36,7 +36,7 @@ class VideoClient(object):
 
         # Registramos la función de captura de video
         # Esta misma función también sirve para enviar un vídeo
-        self.cap = cv2.VideoCapture("timer.mp4")
+        self.cap = cv2.VideoCapture(0)
         self.app.setPollTime(20)
         self.app.registerEvent(self.capturaVideo)
 
@@ -93,6 +93,7 @@ class VideoClient(object):
             nick = self.app.textBox("Conexión",
                 "Introduce el nick del usuario a buscar")
             # Código para conectar con el usuario
+            
         elif button == "Colgar":
             pass
         elif button == "Usuarios":
@@ -141,7 +142,6 @@ if __name__ == '__main__':
     binm = bytes(message, "utf-8")
     ds_sock.sendall(binm)
     resp = ds_sock.recv(MAX_SIZE)
-    print(resp)
     if resp[:3].decode("utf-8") == "NOK":
         print("La contraseña introducida es incorrecta.")
         exit()

@@ -1,1 +1,3 @@
 *.mp4
+appJar/__pycache__/
+appJar/lib/__pycache__/
