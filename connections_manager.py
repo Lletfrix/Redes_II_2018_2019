@@ -41,3 +41,12 @@ class connmanag:
                 for j in range(3):
                     table[i+1].append(aux_split[j])
         return table
+
+    def get_usr_details(self, usr):
+        message = "QUERY " + usr
+        binm = bytes(message, "utf-8")
+        self.ds_sock.sendall(binm)
+        data = self.ds_sock.recv(MAX_SIZE)
+        if(data[3:] == b"NOK"):
+            return None
+        return data[:14].decode("utf-8").split(" ") #Quitamos el header y nos devuelve los datos en una lista
