@@ -23,3 +23,21 @@ class connmanag:
         binm = bytes(message, "utf-8")
         self.ds_sock.sendall(binm)
         return self.ds_sock.recv(MAX_SIZE)
+
+    def get_lst_usr(self):
+        self.ds_sock.sendall(b"LIST_USERS")
+        users = self.ds_sock.recv(MAX_SIZE)
+        table = [["Nick", "IP", "Port"]]
+        if users[:2] == b"OK":
+            users = users[14:]  #Con el 13 quitamos el header fijo
+            while(users[0] != b" "):
+                users = users[1:]
+            users = users[1:]      #Con esto quitamos el número de usuarios
+            splitted = users.decode("utf-8").split("#")
+
+            for i in range(len(splitted)-1):
+                aux_split = splitted[i].split()
+                table.append([])
+                for j in range(3):
+                    table[i+1].append(aux_split[j])
+        return table
