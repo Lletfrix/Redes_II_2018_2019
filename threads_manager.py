@@ -40,7 +40,7 @@ class receptionSV:
                 peerSocket.close()
             else:
                 self.toggleBusy()
-                data = self.recv(MAX_SIZE).split(" ")
+                data = self.recv(MAX_SIZE).decode("ascii").split(" ")
                 accept = self.controller.inCalling(data[1])
                 if(accept):
                     peerSocket.send(b"CALL_ACCEPT "+ self.nick)
