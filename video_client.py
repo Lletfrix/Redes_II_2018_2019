@@ -119,8 +119,10 @@ class VideoClient(object):
             self.app.hideSubWindow("list")
             self.app.removeGrid("Lista de Usuarios")
 
-    def inCalling():
-        pass
+    def inCalling(usr):
+        mess = "El usuario " + usr + " le está llamando. ¿Aceptar la llamada?"
+        return self.app.yesNoBox("Llamada entrante", mess)
+
 
 
 if __name__ == '__main__':

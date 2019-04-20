@@ -1,5 +1,6 @@
 import threading
 import socket as sck
+MAX_SIZE = 1048576
 
 class receptionSV:
 
@@ -39,12 +40,14 @@ class receptionSV:
                 peerSocket.close()
             else:
                 self.toggleBusy()
-                accept = self.controller.inCalling()
+                data = self.recv(MAX_SIZE).split(" ")
+                accept = self.controller.inCalling(data[1])
                 if(accept):
                     peerSocket.send(b"CALL_ACCEPT "+ self.nick)
+                    ## Establecer Llamada
                 else
                     peerSocket.send(b"CALL_DENY "+ self.nick)
-                ## Iniciar la conexión
+                    peerSocket.close()
 
     def start(self):
         # Start TCP listening
