@@ -93,7 +93,7 @@ class VideoClient(object):
             nick = self.app.textBox("Conexión",
                 "Introduce el nick del usuario a buscar")
             # Código para conectar con el usuario
-            
+
         elif button == "Colgar":
             pass
         elif button == "Usuarios":
@@ -118,6 +118,9 @@ class VideoClient(object):
         elif button == "OK":
             self.app.hideSubWindow("list")
             self.app.removeGrid("Lista de Usuarios")
+
+    def inCalling():
+        pass
 
 
 if __name__ == '__main__':
