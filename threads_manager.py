@@ -1,4 +1,5 @@
 import threading
+import cv2
 import socket as sck
 MAX_SIZE = 1048576
 
@@ -52,6 +53,12 @@ class receptionSV:
     def start(self):
         # Start TCP listening
         self.tcpThr.start()
+
+    def recvFrame(self):
+        data = self.udpInSocket.recvfrom(MAX_SIZE).split("#")
+        #Ignoramos cabeceras de momento
+        decframe = cv2.imdecode(np.frombuffer(data[-1],np.uint8), 1)
+        return cv2.cvtColor(decframe,cv2.COLOR_BGR2RGB)
 
     def kill(self):
         self.alive=False
