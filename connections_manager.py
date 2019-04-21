@@ -25,7 +25,7 @@ class connmanag:
 
     def reg_or_upd_usr(self, ip, port, password):
         message = "REGISTER " + self.nick + " " + ip + " " + str(RECV_PORT) + " " + passw + " " + self.versions
-        binm = bytes(message, "utf-8")
+        binm = bytes(message, "ascii")
         self.ds_sock.sendall(binm)
         return self.ds_sock.recv(MAX_SIZE)
 
@@ -38,7 +38,7 @@ class connmanag:
             while(users[0] != b" "):
                 users = users[1:]
             users = users[1:]      #Con esto quitamos el número de usuarios
-            splitted = users.decode("utf-8").split("#")
+            splitted = users.decode("ascii").split("#")
 
             for i in range(len(splitted)-1):
                 aux_split = splitted[i].split()
@@ -49,12 +49,12 @@ class connmanag:
 
     def get_usr_details(self, usr):
         message = "QUERY " + usr
-        binm = bytes(message, "utf-8")
+        binm = bytes(message, "ascii")
         self.ds_sock.sendall(binm)
         data = self.ds_sock.recv(MAX_SIZE)
         if(data[3:] == b"NOK"):
             return None
-        return data[:14].decode("utf-8").split(" ") #Quitamos el header y nos devuelve los datos en una lista
+        return data[:14].decode("ascii").split(" ") #Quitamos el header y nos devuelve los datos en una lista
 
 
     def establ_call(self, usr):
@@ -76,7 +76,7 @@ class connmanag:
         self.peer_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.peer_sock.connect((details[1],details[2]))   #TODO Check exception
         init_message = "CALLING " + self.nick + str(RECV_PORT)
-        init_message = bytes(init_message, "utf-8")
+        init_message = bytes(init_message, "ascii")
         self.peer_sock.sendall(init_message)
         status = self.peer_sock.recv(MAX_SIZE)
         if status[:13] is b"CALL_ACCEPTED":
