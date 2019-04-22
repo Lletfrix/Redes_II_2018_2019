@@ -34,6 +34,14 @@ class VideoClient(object):
         self.app.addButtons(["OK"], self.buttonsCallback)
         self.app.stopSubWindow()
 
+        self.app.startSubWindow("inVideo", modal=True)
+        self.app.setGeometry(640,520)
+        self.app.addLabel("video", "Video entrante")
+        self.app.addButtons(["Colgar", "Pausar"], self.buttonsCallback])
+        self.app.setPollTime(20)
+        self.app.registerEvent(self.recibeVideo)
+        self.app.stopSubWindow()
+
         # Registramos la función de captura de video
         # Esta misma función también sirve para enviar un vídeo
         self.cap = cv2.VideoCapture(0)
@@ -41,7 +49,7 @@ class VideoClient(object):
         self.app.registerEvent(self.capturaVideo)
 
         # Añadir los botones
-        self.app.addButtons(["Usuarios", "Conectar", "Colgar", "Salir"], self.buttonsCallback)
+        self.app.addButtons(["Conectar", "Salir"], self.buttonsCallback)
 
         # Barra de estado
         # Debe actualizarse con información útil sobre la llamada (duración, FPS, etc...)
@@ -113,16 +121,32 @@ class VideoClient(object):
                 self.app.openSubWindow("list")
                 self.app.addGrid("Lista de Usuarios", table)
                 self.app.showSubWindow("list")
-                #self.app.infoBox("Lista de usuarios", table)
-                #self.app.addTable("Lista de Usuarios", table)
         elif button == "OK":
             self.app.hideSubWindow("list")
             self.app.removeGrid("Lista de Usuarios")
 
-    def inCalling(usr):
+    def inCalling(self, usr):
         mess = "El usuario " + usr + " le está llamando. ¿Aceptar la llamada?"
         return self.app.yesNoBox("Llamada entrante", mess)
 
+    def infoBox(self, title, msg):
+        self.app.infoBox(title, msg)
+
+    def recibeVideo():
+        self.bufferIn.get()
+        #show
+
+    def startCall():
+        #iniciar los hilos de UDP
+
+        self.udpThreads.start()
+        self.app.openSubWindow("inVideo")
+        #espera por feedback de usuario
+        #si hace pause - llamar a la funcion del modelo que envia la señal de pause
+        #si cuelga - llama a la funcion del modelo que envia la señal de pause
+        self.app.hideSubWindow("inVideo")
+        ##########   sale de la ejecución
+        pass
 
 
 if __name__ == '__main__':
