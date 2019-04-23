@@ -31,7 +31,7 @@ class VideoClient(object):
         self.app.startSubWindow("list", modal=True)
         self.app.setGeometry(400, 400)
         self.app.addLabel("lu", "Lista de Usuarios")
-        self.app.addButtons(["OK"], self.buttonsCallback)
+        self.app.addButtons(["Cancelar", "Llamar"], self.buttonsCallback)
         self.app.stopSubWindow()
 
         self.app.startSubWindow("inVideo", modal=True)
@@ -96,15 +96,16 @@ class VideoClient(object):
             ds_sock.sendall(quit)
             ds_sock.close()
             self.app.stop()
-        elif button == "Conectar":
+        elif button == "Llamar":
             # Entrada del nick del usuario a conectar
             nick = self.app.textBox("Conexión",
                 "Introduce el nick del usuario a buscar")
+            # Obtener datos del usuario
             # Código para conectar con el usuario
 
         elif button == "Colgar":
             pass
-        elif button == "Usuarios":
+        elif button == "Conectar":
             ds_sock.sendall(get_users)
             users = ds_sock.recv(MAX_SIZE)
 
@@ -121,7 +122,7 @@ class VideoClient(object):
                 self.app.openSubWindow("list")
                 self.app.addGrid("Lista de Usuarios", table)
                 self.app.showSubWindow("list")
-        elif button == "OK":
+        elif button == "Cancelar":
             self.app.hideSubWindow("list")
             self.app.removeGrid("Lista de Usuarios")
 
@@ -147,6 +148,15 @@ class VideoClient(object):
         self.app.hideSubWindow("inVideo")
         ##########   sale de la ejecución
         pass
+
+    def getUsrDetails(self, usr):
+        message = "QUERY " + usr
+        binm = bytes(message, "ascii")
+        self.dsSock.sendall(binm)
+        data = self.dsSock.recv(MAX_SIZE)
+        if(data[3:] == b"NOK"):
+            return None
+        return data[:14].decode("ascii").split(" ") #Quitamos el header y nos devuelve los datos en una lista
 
 
 if __name__ == '__main__':

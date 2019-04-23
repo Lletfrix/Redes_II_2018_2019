@@ -3,7 +3,7 @@ import threading
 import socket as sck
 
 class UdpThreads:
-    def __init__(bufferIn, bufferOut, ip, inPort, outPort):
+    def __init__(self, bufferIn, bufferOut, ip, inPort, outPort):
         # Connection info
         self.ip = ip
         self.inPort = inPort
