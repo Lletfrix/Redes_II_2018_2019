@@ -99,8 +99,11 @@ class VideoClient(object):
         elif button == "Llamar":
             # Entrada del nick del usuario a conectar
             nick = self.app.textBox("Conexión",
-                "Introduce el nick del usuario a buscar")
-            # Obtener datos del usuario
+                "Introduce el nick del usuario a llamar")
+            data = self.getUsrDetails(nick)
+            if data is None:
+                self.app.infoBox("Error", "No hay ningún usuario con ese nick, revisa la lista.")
+                return
             # Código para conectar con el usuario
 
         elif button == "Colgar":
@@ -136,6 +139,15 @@ class VideoClient(object):
     def recibeVideo():
         self.bufferIn.get()
         #show
+
+    def getUsrDetails(usr):
+        message = "QUERY " + usr
+        binm = bytes(message, "ascii")
+        ds_sock.sendall(binm)
+        data = ds_sock.recv(MAX_SIZE)
+        if(data[3:] == b"NOK"):
+            return None
+        return data[:14].decode("ascii").split(" ")
 
     def startCall():
         #iniciar los hilos de UDP
