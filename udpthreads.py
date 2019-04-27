@@ -1,13 +1,13 @@
-import Queue
+import queue
 import threading
 import socket as sck
 
 class UdpThreads:
-    def __init__(self, bufferIn, bufferOut, ip, inPort, outPort):
+    def __init__(self, bufferIn, bufferOut):
         # Connection info
-        self.ip = ip
-        self.inPort = inPort
-        self.outPort = outPort
+        self.ip = None
+        self.inPort = None
+        self.outPort = None
         self.peerAddr = (None, None)
         self.alive = None
         # Buffers
@@ -18,12 +18,16 @@ class UdpThreads:
         self.lockOut = threading.Lock()
         # UDP Sockets
         self.udpInSocket = sck.socket(sck.AF_INET, sck.SOCK_DGRAM)
-        self.updInSocket.bind((ip, inPort))
         self.udpOutSocket = sck.socket(sck.AF_INET, sck.SOCK_DGRAM)
-        self.updOutSocket.bind((ip, outPort))
         # UDP Threads
         self.udpInThr = None
         self.udpOutThr = None
+
+    def setINET(self, ip, udpInPort):
+        self.ip = ip
+        self.inPort = udpInPort
+        self.udpInSocket.bind((ip, udpInPort))
+        self.udpOutSocket.bind((ip, 0))
 
     def udpSend(self):
         while(self.alive):
@@ -71,6 +75,7 @@ class UdpThreads:
         self.udpInThr = threading.Thread(target=udpRecv, daemon=True, args=(self))
         self.udpOutThr = threading.Thread(target=udpSend, daemon=True, args=(self))
         self.sendTo = (peerAddr, peerPort)
+
         self.udpInThr.start()
         self.udpOutThr.start()
 
