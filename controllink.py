@@ -1,14 +1,20 @@
 import socket as sck
 import threading
+import signal
+import os
+import platform
 
 RECV_SZ = 4096
 timeoutDelay = 60
 class ControlLink:
     def __init__(self):
+        #Operating System
+        self.operatingSystem = platform.system()
         # TCP peer socket
         self.peerSocket = None
         self.peerPort = None
         self.peerAddr = None
+        self.usrCalled = None
         # TCP server socket
         self.svSocket = sck.socket(sck.AF_INET, sck.SOCK_STREAM)
         # TCP server thread
@@ -17,13 +23,15 @@ class ControlLink:
         self.ownNick = None
         self.ownAddr = None
         self.udpInPort = None
-        self.usrCalled = None
         self.alive=False
         self.busy = False
         self.busymtx = threading.Lock()
 
     def getDest(self):
         return (self.peerAddr, self.peerPort)
+
+    def getPeerNick(self):
+        return self.usrCalled
 
     def setNick(self, nick):
         self.ownNick = nick
@@ -32,9 +40,10 @@ class ControlLink:
         self.ownAddr = addr
         self.udpInPort = udpInPort
 
-    def setDest(self, userCalled, peerPort):
-        self.userCalled = userCalled
+    def setDest(self, usrCalled, peerPort, peerAddr):
+        self.usrCalled = usrCalled
         self.peerPort = peerPort
+        self.peerAddr = peerAddr
 
     def call(self, addr):
         if self.getBusyState():
@@ -54,9 +63,7 @@ class ControlLink:
             return False
 
         if cmd == "CALL_ACCEPTED":
-            self.usrCalled = nick.encode('ascii')
-            self.peerPort = int(port.encode('ascii'))
-            self.peerAddr = addr[0]
+            self.setDest(nick.encode('ascii'), int(port), addr[0])
             return True
         self.peerSocket.close()
         self.toggleBusy()
@@ -72,18 +79,43 @@ class ControlLink:
     def tcpSv(self):
         self.svSocket.listen(5)
         while self.alive:
+            print("ACEPTAR")
             (pSocket, pAddr) = self.svSocket.accept()
             if self.getBusyState():
                 pSocket.send(b"CALL_BUSY")
                 pSocket.close()
-            else:
+            else: # I'm free to be called
                 self.toggleBusy()
                 self.peerSocket = pSocket # TODO: THIS MIGHT NOT WORK
-                # send signal to Main Thread
+                self.peerSocket.settimeout(timeoutDelay) #TODO: Reduce time
+                print("RECIBIR CALLING")
+                try:
+                    data = self.peerSocket.recv(RECV_SZ)
+                except sck.timeout:
+                    self.peerSocket.close()
+                    self.peerSocket = None
+                    self.toggleBusy()
+                    return
+                print("DECODIFICAR CALLING")
+                try:
+                    (cmd, nick, udpInPort) = data.decode("ascii").split(" ")
+                except ValueError:
+                    self.peerSocket.close()
+                    self.peerSocket = None
+                    self.toggleBusy()
+                    return
+                if cmd == "CALLING":
+                    print("ENVIAR SEÑAL")
+                    self.setDest(nick.encode("ascii"), int(udpInPort), pAddr)
+                    # send signal to Main Thread
+                    if self.operatingSystem == 'Windows':
+                        os.kill(os.getpid(), signal.CTRL_C_EVENT)
+                    elif self.operatingSystem == 'Linux' or operatingSystem == 'Darwin':
+                        os.kill(os.getpid(), signal.SIGUSR1)
 
     def answerCall(self, answer):
         if answer:
-            self.peerSocket.send(b"CALL_ACCEPTED " + self.ownNick + b" " + self.udpInPort)
+            self.peerSocket.send(b"CALL_ACCEPTED " + self.ownNick + b" " + str(self.udpInPort).encode("ascii"))
         else:
             self.peerSocket.send(b"CALL_DENIED " + self.ownNick)
             self.peerSocket.close()
@@ -91,6 +123,8 @@ class ControlLink:
             self.toggleBusy()
 
     def check(self):
+        if self.peerSocket is None:
+            return None
         try:
             data = self.peerSocket.recv(RECV_SZ, sck.MSG_DONTWAIT)
         except sck.error:
