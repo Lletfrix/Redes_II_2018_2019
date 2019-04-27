@@ -9,6 +9,8 @@ import socket
 import requests
 import getpass
 import queue
+import signal
+import platform
 
 MAX_SIZE = 1048576
 ds_addr = ("vega.ii.uam.es", 8000)
@@ -21,6 +23,11 @@ ipPrivada = None
 ipPublica = None
 port = "15951" #Random, maybe we can ask the user for it
 udpInPort = 15851
+vc = None
+
+def newCallPetition(signum, frame):
+    vc.inCalling()
+
 class VideoClient(object):
 
     def __init__(self, window_size, bufferIn, bufferOut, udpConn, tcpCtrl):
@@ -167,8 +174,6 @@ class VideoClient(object):
                 self.startCall()
             #tcpConnections.call(outAddr)
             #udpConn.start(peerAddr, peerPort)
-        elif button == "Colgar":
-            pass
         elif button == "Conectar":
             ds_sock.sendall(get_users)
             users = ds_sock.recv(MAX_SIZE)
@@ -185,6 +190,7 @@ class VideoClient(object):
                         table[i+1].append(aux_split[j])
                 self.app.openSubWindow("list")
                 self.app.addGrid("Lista de Usuarios", table)
+                self.app.closeSubWindow("list")
                 self.app.showSubWindow("list")
         elif button == "Cancelar":
             self.app.hideSubWindow("list")
@@ -196,19 +202,31 @@ class VideoClient(object):
                 tcpCtrl.resume()
                 udpConn.resume()
                 self.app.setButton("Pausar", "Pausar")
+                self.paused = False
             else: # Pause
                 udpConn.hold()
                 tcpCtrl.hold()
                 self.app.setButton("Pausar", "Continuar")
+                self.paused = True
 
         elif button == "Colgar":
-            udpCtrl.hang()
+            print("VOY A COLGAR")
+            udpConn.hang()
             tcpCtrl.hang()
+            if self.paused:
+                udpConn.resume()
+                self.app.setButton("Pausar", "Pausar")
+                self.paused = False
             self.app.hideSubWindow("inVideo")
 
-    def inCalling(self, usr):
+    def inCalling(self):
+        usr = self.tcpCtrl.getPeerNick().decode("ascii")
         mess = "El usuario " + usr + " le está llamando. ¿Aceptar la llamada?"
-        return self.app.yesNoBox("Llamada entrante", mess)
+        ans = self.app.yesNoBox("Llamada entrante", mess)
+        self.tcpCtrl.answerCall(ans)
+        if ans:
+            self.startCall()
+
 
     def infoBox(self, title, msg):
         self.app.infoBox(title, msg)
@@ -216,12 +234,11 @@ class VideoClient(object):
     def recibeVideo(self):
         try:
             self.bufferIn.get(block=False)
-            cmd = tcpCtrl.check()
-            if cmd is not None:
-                self.app.videoCallback(cmd)
-
         except queue.Empty:
-            pass
+            pass    
+        cmd = tcpCtrl.check()
+        if cmd is not None:
+            self.app.videoCallback(cmd)
         #show
 
     def getUsrDetails(self, usr):
@@ -233,11 +250,14 @@ class VideoClient(object):
             return None
         return data.decode("ascii").split(" ")
 
-    def startCall():
+    def startCall(self):
         #iniciar los hilos de UDP
         self.udpConn.start(self.tcpCtrl.getDest())
+        self.paused = False
+        self.app.setButton("Pausar", "Pausar")
         #self.udpThreads.start()
-        self.app.openSubWindow("inVideo")
+        #self.app.openSubWindow("inVideo")
+        self.app.showSubWindow("inVideo")
         #espera por feedback de usuario
         #si hace pause - llamar a la funcion del modelo que envia la señal de pause
         #si cuelga - llama a la funcion del modelo que envia la señal de pause
@@ -260,6 +280,12 @@ if __name__ == '__main__':
     s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]    #Gotten from Stackoverflow
     ipPrivada = ip
 
+    operatingSystem = platform.system()
+
+    if operatingSystem == 'Linux' or operatingSystem == 'Darwin':
+        signal.signal(signal.SIGUSR1, newCallPetition)
+    elif operatingSystem == 'Windows':
+        signal.signal(signal.SIGINT, newCallPetition)
     # Lanza el bucle principal del GUI
     # El control ya NO vuelve de esta función, por lo que todas las
     # acciones deberán ser gestionadas desde callbacks y threads
