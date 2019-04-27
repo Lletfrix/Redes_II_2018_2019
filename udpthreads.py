@@ -19,6 +19,9 @@ class UdpThreads:
         # UDP Sockets
         self.udpInSocket = sck.socket(sck.AF_INET, sck.SOCK_DGRAM)
         self.udpOutSocket = sck.socket(sck.AF_INET, sck.SOCK_DGRAM)
+
+        self.udpInSocket.setblocking(0)
+        self.udpOutSocket.setblocking(0)
         # UDP Threads
         self.udpInThr = None
         self.udpOutThr = None
@@ -31,33 +34,49 @@ class UdpThreads:
 
     def udpSend(self):
         while(self.alive):
-            lockOut.acquire()
-
-            data = self.bufferOut.get()
-            self.udpOutSocket.sendto(data, self.sendTo)
-
-            lockOut.release()
+            self.lockOut.acquire()
+            try:
+                data = self.bufferOut.get(block=False)
+            except queue.Empty:
+                self.lockOut.release()
+                continue
+            try:
+                self.udpOutSocket.sendto(data, self.sendTo)
+            except sck.error:
+                self.lockOut.release()
+                continue
+            self.lockOut.release()
 
         try:
-            lockOut.release()
-        except ThreadError:
+            self.lockOut.release()
+        except threading.ThreadError:
             pass
+        print("VOY A DEJAR DE ENVIAR")
 
     def udpRecv(self):
         while(self.alive):
-            lockIn.acquire()
+            self.lockIn.acquire()
 
-            data, sender = self.udpInSocket.recvfrom()
-            if sender[0] is not self.peerAddr[0]:
+            try:
+                data, sender = self.udpInSocket.recvfrom(4096)
+            except sck.error:
+                self.lockIn.release()
                 continue
-            self.bufferIn.put(data)
-
-            lockIn.release()
+            if sender[0] is not self.peerAddr[0]:
+                self.lockIn.release()
+                continue
+            try:
+                self.bufferIn.put(data, block=False)
+            except queue.Full:
+                self.lockIn.release()
+                continue
+            self.lockIn.release()
 
         try:
-            lockIn.release()
-        except ThreadError:
+            self.lockIn.release()
+        except threading.ThreadError:
             pass
+        print("VOY A DEJAR DE RECIBIR")
 
     def hold(self):
         self.lockIn.acquire()
@@ -72,8 +91,8 @@ class UdpThreads:
             return
 
         self.alive=True
-        self.udpInThr = threading.Thread(target=udpRecv, daemon=True, args=(self))
-        self.udpOutThr = threading.Thread(target=udpSend, daemon=True, args=(self))
+        self.udpInThr = threading.Thread(target=self.udpRecv, daemon=True)
+        self.udpOutThr = threading.Thread(target=self.udpSend, daemon=True)
         self.sendTo = peerInfo
 
         self.udpInThr.start()
