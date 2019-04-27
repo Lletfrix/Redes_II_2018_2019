@@ -58,11 +58,11 @@ class VideoClient(object):
         self.app.setGeometry(400, 200)
         self.app.addLabelEntry("Usuario")
         self.app.addLabelSecretEntry("Contraseña")
-        self.app.addNamedButton("Login/Registrar", "Login", self.loginButtons)
-        self.app.addNamedButton("Salir", "SalirLog", self.loginButtons)
         self.app.addRadioButton("ipOption", "Privada")
         self.app.addRadioButton("ipOption", "Publica")
         self.app.setRadioButton("ipOption", "Privada")
+        self.app.addNamedButton("Login/Registrar", "Login", self.loginButtons)
+        self.app.addNamedButton("Salir", "SalirLog", self.loginButtons)
         self.app.stopSubWindow()
         # Registramos la función de captura de video
         # Esta misma función también sirve para enviar un vídeo
