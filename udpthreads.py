@@ -59,7 +59,7 @@ class UdpThreads:
         except ThreadError:
             pass
 
-    def pause(self):
+    def hold(self):
         self.lockIn.acquire()
         self.lockOut.acquire()
 
@@ -67,14 +67,14 @@ class UdpThreads:
         self.lockIn.release()
         self.lockOut.release()
 
-    def start(self, peerAddr, peerPort):
+    def start(self, peerInfo):
         if self.alive:
             return
 
         self.alive=True
         self.udpInThr = threading.Thread(target=udpRecv, daemon=True, args=(self))
         self.udpOutThr = threading.Thread(target=udpSend, daemon=True, args=(self))
-        self.sendTo = (peerAddr, peerPort)
+        self.sendTo = peerInfo
 
         self.udpInThr.start()
         self.udpOutThr.start()
