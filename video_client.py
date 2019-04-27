@@ -16,7 +16,7 @@ get_users = b"LIST_USERS"
 quit = b"QUIT"
 ds_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ds_sock.connect(ds_addr)
-versions = "V1"
+versions = "V0"
 ipPrivada = None
 ipPublica = None
 port = "15951" #Random, maybe we can ask the user for it
@@ -24,7 +24,7 @@ udpInPort = 15851
 class VideoClient(object):
 
     def __init__(self, window_size, bufferIn, bufferOut, udpConn, tcpCtrl):
-
+        self.paused = False
         self.ip = None
         self.nick = None
         self.pwd = None
@@ -49,7 +49,7 @@ class VideoClient(object):
         self.app.startSubWindow("inVideo", modal=True)
         self.app.setGeometry(640,520)
         self.app.addLabel("video", "Video entrante")
-        self.app.addButtons(["Colgar", "Pausar"], self.buttonsCallback)
+        self.app.addButtons(["Colgar", "Pausar"], self.videoCallback)
         self.app.setPollTime(20)
         self.app.registerEvent(self.recibeVideo)
         self.app.stopSubWindow()
@@ -160,7 +160,11 @@ class VideoClient(object):
                 self.app.infoBox("Error", "No hay ningún usuario con ese nick, revisa la lista.")
                 return
             # Código para conectar con el usuario
-            outAddr = (data[3], int(data[4]))
+            outAddr = (data[3].encode("ascii"), int(data[4]))
+            if not tcpCtrl.call(outAddr):
+                self.app.infoBox("Error", "No ha sido posible realizar la conexión.")
+            else:
+                self.startCall()
             #tcpConnections.call(outAddr)
             #udpConn.start(peerAddr, peerPort)
         elif button == "Colgar":
@@ -186,6 +190,22 @@ class VideoClient(object):
             self.app.hideSubWindow("list")
             self.app.removeGrid("Lista de Usuarios")
 
+    def videoCallback(self, button):
+        if button == "Pausar":
+            if self.paused: # Continue
+                tcpCtrl.resume()
+                udpConn.resume()
+                self.app.setButton("Pausar", "Pausar")
+            else: # Pause
+                udpConn.hold()
+                tcpCtrl.hold()
+                self.app.setButton("Pausar", "Continuar")
+
+        elif button == "Colgar":
+            udpCtrl.hang()
+            tcpCtrl.hang()
+            self.app.hideSubWindow("inVideo")
+
     def inCalling(self, usr):
         mess = "El usuario " + usr + " le está llamando. ¿Aceptar la llamada?"
         return self.app.yesNoBox("Llamada entrante", mess)
@@ -196,7 +216,9 @@ class VideoClient(object):
     def recibeVideo(self):
         try:
             self.bufferIn.get(block=False)
-            tcpConnections.check()
+            cmd = tcpCtrl.check()
+            if cmd is not None:
+                self.app.videoCallback(cmd)
 
         except queue.Empty:
             pass
@@ -213,13 +235,12 @@ class VideoClient(object):
 
     def startCall():
         #iniciar los hilos de UDP
-
-        self.udpThreads.start()
+        self.udpConn.start(self.tcpCtrl.getDest())
+        #self.udpThreads.start()
         self.app.openSubWindow("inVideo")
         #espera por feedback de usuario
         #si hace pause - llamar a la funcion del modelo que envia la señal de pause
         #si cuelga - llama a la funcion del modelo que envia la señal de pause
-        self.app.hideSubWindow("inVideo")
         ##########   sale de la ejecución
         pass
 
