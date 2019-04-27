@@ -1,11 +1,14 @@
 import socket as sck
 import threading
 
+RECV_SZ = 4096
+timeoutDelay = 60
 class ControlLink:
-    timeoutDelay = 60
     def __init__(self):
         # TCP peer socket
         self.peerSocket = None
+        self.peerPort = None
+        self.peerAddr = None
         # TCP server socket
         self.svSocket = sck.socket(sck.AF_INET, sck.SOCK_STREAM)
         # TCP server thread
@@ -15,10 +18,12 @@ class ControlLink:
         self.ownAddr = None
         self.udpInPort = None
         self.usrCalled = None
-        self.udpOutPort = None
         self.alive=False
         self.busy = False
         self.busymtx = threading.Lock()
+
+    def getDest(self):
+        return (self.peerAddr, self.peerPort)
 
     def setNick(self, nick):
         self.ownNick = nick
@@ -27,17 +32,9 @@ class ControlLink:
         self.ownAddr = addr
         self.udpInPort = udpInPort
 
-    def setDest(self, userCalled, udpOutPort):
+    def setDest(self, userCalled, peerPort):
         self.userCalled = userCalled
-        self.udpOutPort = udpOutPort
-
-    def hold(self):
-        # TODO: Handle errors
-        self.peerSocket.send(b"CALL_HOLD " + self.ownNick)
-
-    def resume(self):
-        # TODO: Handle errors
-        self.peerSocket.send(b"CALL_RESUME " + self.ownNick)
+        self.peerPort = peerPort
 
     def call(self, addr):
         if self.getBusyState():
@@ -45,14 +42,21 @@ class ControlLink:
         self.toggleBusy()
         # TODO: Handle sck.timeout
         self.peerSocket = sck.socket(sck.AF_INET, sck.SOCK_STREAM)
-        self.peerSocket.settimeout(timeout)
-        self.peerSocket.connect(addr)
-        self.peerSocket.send(b"CALLING " + self.ownNick + b" " + self.udpInPort)
-        resp = self.peerSocket.recv() # TODO: Handle invalid resp
-        (cmd, nick, port) = resp.decode('ascii').split(' ')
+        self.peerSocket.settimeout(timeoutDelay)
+        try:
+            self.peerSocket.connect(addr)
+            self.peerSocket.send(b"CALLING " + self.ownNick + b" " + self.udpInPort)
+            resp = self.peerSocket.recv(RECV_SZ) # TODO: Handle invalid resp
+            (cmd, nick, port) = resp.decode('ascii').split(' ')
+        except sck.timeout:
+            return False
+        except ConnectionError:
+            return False
+
         if cmd == "CALL_ACCEPTED":
             self.usrCalled = nick.encode('ascii')
-            self.udpOutPort = port.encode('ascii')
+            self.peerPort = int(port.encode('ascii'))
+            self.peerAddr = addr[0]
             return True
         self.peerSocket.close()
         self.toggleBusy()
@@ -85,6 +89,33 @@ class ControlLink:
             self.peerSocket.close()
             self.peerSocket = None
             self.toggleBusy()
+
+    def check(self):
+        try:
+            data = self.peerSocket.recv(RECV_SZ, sck.MSG_DONTWAIT)
+        except sck.error:
+            return None
+        try:
+            (cmd, nick) = data.decode('ascii').split(' ')
+        except ValueError:
+            cmd = data.decode('ascii')
+
+        if cmd is "CALL_END":
+            return "Colgar"
+        elif cmd is "CALL_HOLD":
+            return "Pausar"
+        elif cmd is "CALL_RESUME":
+            return "Pausar"
+
+        return None
+
+    def hold(self):
+        # TODO: Handle errors
+        self.peerSocket.send(b"CALL_HOLD " + self.ownNick)
+
+    def resume(self):
+        # TODO: Handle errors
+        self.peerSocket.send(b"CALL_RESUME " + self.ownNick)
 
     def hang(self):
         self.peerSocket.send(b"CALL_END " + self.ownNick)
