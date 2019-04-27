@@ -1,11 +1,14 @@
 # import the library
 from appJar import gui
 from PIL import Image, ImageTk
+from controllink import *
+from udpthreads import *
 import numpy as np
 import cv2
 import socket
 import requests
 import getpass
+import queue
 
 MAX_SIZE = 1048576
 ds_addr = ("vega.ii.uam.es", 8000)
@@ -14,12 +17,21 @@ quit = b"QUIT"
 ds_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ds_sock.connect(ds_addr)
 versions = "V1"
+ipPrivada = None
+ipPublica = None
 port = "15951" #Random, maybe we can ask the user for it
-
+udpInPort = 15851
 class VideoClient(object):
 
-    def __init__(self, window_size):
+    def __init__(self, window_size, bufferIn, bufferOut, udpConn, tcpCtrl):
 
+        self.ip = None
+        self.nick = None
+        self.pwd = None
+        self.bufferIn = bufferIn
+        self.bufferOut = bufferOut
+        self.udpConn = udpConn
+        self.tcpCtrl = tcpCtrl
         # Creamos una variable que contenga el GUI principal
         self.app = gui("Redes2 - P2P", window_size)
         self.app.setGuiPadding(10,10)
@@ -37,11 +49,21 @@ class VideoClient(object):
         self.app.startSubWindow("inVideo", modal=True)
         self.app.setGeometry(640,520)
         self.app.addLabel("video", "Video entrante")
-        self.app.addButtons(["Colgar", "Pausar"], self.buttonsCallback])
+        self.app.addButtons(["Colgar", "Pausar"], self.buttonsCallback)
         self.app.setPollTime(20)
         self.app.registerEvent(self.recibeVideo)
         self.app.stopSubWindow()
 
+        self.app.startSubWindow("login", modal=True)
+        self.app.setGeometry(400, 200)
+        self.app.addLabelEntry("Usuario")
+        self.app.addLabelSecretEntry("Contraseña")
+        self.app.addNamedButton("Login/Registrar", "Login", self.loginButtons)
+        self.app.addNamedButton("Salir", "SalirLog", self.loginButtons)
+        self.app.addRadioButton("ipOption", "Privada")
+        self.app.addRadioButton("ipOption", "Publica")
+        self.app.setRadioButton("ipOption", "Privada")
+        self.app.stopSubWindow()
         # Registramos la función de captura de video
         # Esta misma función también sirve para enviar un vídeo
         self.cap = cv2.VideoCapture(0)
@@ -56,7 +78,7 @@ class VideoClient(object):
         self.app.addStatusbar(fields=2)
 
     def start(self):
-        self.app.go()
+        self.app.go(startWindow="login")
 
     # Función que captura el frame a mostrar en cada momento
     def capturaVideo(self):
@@ -88,6 +110,37 @@ class VideoClient(object):
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
+    def loginButtons(self, button):
+
+        if button == "Login":
+            if self.app.getRadioButton("ipOption") == "Privada":
+                self.ip = ipPrivada
+            else:
+                self.ip = ipPublica
+            self.nick = self.app.getEntry("Usuario")
+            self.pwd = self.app.getEntry("Contraseña")
+            if self.doLogin() == True:
+                self.udpConn.setINET(ipPrivada, udpInPort)
+                self.tcpCtrl.start(self.nick.encode("ascii"), (ipPrivada.encode("ascii"), int(port)), udpInPort)
+                self.app.infoBox("Bienvenida", "Su cuenta se ha registrado o actualizado satisfactoriamente.")
+                self.app.show()
+                self.app.hideSubWindow("login")
+
+        elif button == "SalirLog":
+            ds_sock.sendall(quit)
+            ds_sock.close()
+            self.app.stop()
+
+    def doLogin(self):
+        message = "REGISTER " + self.nick + " " + self.ip + " " + port + " " + self.pwd + " " + versions
+        binm = bytes(message, "ascii")
+        ds_sock.sendall(binm)
+        resp = ds_sock.recv(MAX_SIZE)
+        if resp[:3].decode("ascii") == "NOK":
+            self.app.warningBox("Error Registro", "La contraseña introducida es incorrecta.")
+            return False
+        return True
+
     # Función que gestiona los callbacks de los botones
     def buttonsCallback(self, button):
 
@@ -100,12 +153,16 @@ class VideoClient(object):
             # Entrada del nick del usuario a conectar
             nick = self.app.textBox("Conexión",
                 "Introduce el nick del usuario a llamar")
+
             data = self.getUsrDetails(nick)
+
             if data is None:
                 self.app.infoBox("Error", "No hay ningún usuario con ese nick, revisa la lista.")
                 return
             # Código para conectar con el usuario
-
+            outAddr = (data[3], int(data[4]))
+            #tcpConnections.call(outAddr)
+            #udpConn.start(peerAddr, peerPort)
         elif button == "Colgar":
             pass
         elif button == "Conectar":
@@ -136,18 +193,23 @@ class VideoClient(object):
     def infoBox(self, title, msg):
         self.app.infoBox(title, msg)
 
-    def recibeVideo():
-        self.bufferIn.get()
+    def recibeVideo(self):
+        try:
+            self.bufferIn.get(block=False)
+            tcpConnections.check()
+
+        except queue.Empty:
+            pass
         #show
 
-    def getUsrDetails(usr):
+    def getUsrDetails(self, usr):
         message = "QUERY " + usr
         binm = bytes(message, "ascii")
         ds_sock.sendall(binm)
         data = ds_sock.recv(MAX_SIZE)
-        if(data[3:] == b"NOK"):
+        if(data[:3] == b"NOK"):
             return None
-        return data[:14].decode("ascii").split(" ")
+        return data.decode("ascii").split(" ")
 
     def startCall():
         #iniciar los hilos de UDP
@@ -161,42 +223,21 @@ class VideoClient(object):
         ##########   sale de la ejecución
         pass
 
-    def getUsrDetails(self, usr):
-        message = "QUERY " + usr
-        binm = bytes(message, "ascii")
-        self.dsSock.sendall(binm)
-        data = self.dsSock.recv(MAX_SIZE)
-        if(data[3:] == b"NOK"):
-            return None
-        return data[:14].decode("ascii").split(" ") #Quitamos el header y nos devuelve los datos en una lista
-
-
 if __name__ == '__main__':
 
-    vc = VideoClient("640x520")
+    bufferIn = queue.Queue()
+    bufferOut = queue.Queue()
 
-    # Crear aquí los threads de lectura, de recepción y,
-    # en general, todo el código de inicialización que sea necesario
-    # ...
-    nick = input("Introduce tu nick: ")
-    passw = getpass.getpass("Introduce tu contraseña: ")
-    pub_or_priv = None
-    while pub_or_priv != "B" and pub_or_priv != "V":
-        pub_or_priv = input("Introduce B para usar tu ip pública o V para usar tu ip privada: ")
-    if pub_or_priv == "B":
-        ip = requests.get("http://ipecho.net/plain?").text
-    else:
-        ip = [l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2]
-        if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0],
-        s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]    #Gotten from Stackoverflow
-    message = "REGISTER " + nick + " " + ip + " " + port + " " + passw + " " + versions
-    binm = bytes(message, "utf-8")
-    ds_sock.sendall(binm)
-    resp = ds_sock.recv(MAX_SIZE)
-    if resp[:3].decode("utf-8") == "NOK":
-        print("La contraseña introducida es incorrecta.")
-        exit()
-    print("Bienvenido " + nick + ", tu cuenta ha sido registrada o actualizada correctamente.")
+    udpConn = UdpThreads(bufferIn, bufferOut)
+    tcpCtrl = ControlLink()
+
+    vc = VideoClient("640x520", bufferIn, bufferOut, udpConn, tcpCtrl)
+
+    ipPublica = requests.get('https://api.ipify.org').text
+    ip = [l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2]
+    if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), s.getsockname()[0],
+    s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]    #Gotten from Stackoverflow
+    ipPrivada = ip
 
     # Lanza el bucle principal del GUI
     # El control ya NO vuelve de esta función, por lo que todas las
