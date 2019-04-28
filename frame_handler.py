@@ -1,5 +1,6 @@
 import time
 import cv2
+import numpy as np
 
 class FrameHandler:
     def __init__(self, quality):
