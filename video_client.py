@@ -57,7 +57,7 @@ class VideoClient(object):
         self.app.setGeometry(640,520)
         self.app.addLabel("video", "Video entrante")
         self.app.addButtons(["Colgar", "Pausar"], self.videoCallback)
-        self.app.setPollTime(20)
+        self.app.setPollTime(500)
         self.app.registerEvent(self.recibeVideo)
         self.app.stopSubWindow()
 
@@ -190,7 +190,7 @@ class VideoClient(object):
                         table[i+1].append(aux_split[j])
                 self.app.openSubWindow("list")
                 self.app.addGrid("Lista de Usuarios", table)
-                self.app.closeSubWindow("list")
+                self.app.stopSubWindow()
                 self.app.showSubWindow("list")
         elif button == "Cancelar":
             self.app.hideSubWindow("list")
@@ -235,10 +235,11 @@ class VideoClient(object):
         try:
             self.bufferIn.get(block=False)
         except queue.Empty:
-            pass    
-        cmd = tcpCtrl.check()
+            pass
+        cmd, flag = tcpCtrl.check()
         if cmd is not None:
-            self.app.videoCallback(cmd)
+            if flag != self.paused:
+                self.videoCallback(cmd)
         #show
 
     def getUsrDetails(self, usr):
