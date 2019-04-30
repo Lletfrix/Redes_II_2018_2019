@@ -140,7 +140,7 @@ class VideoClient(object):
                 self.app.infoBox("Error", "No hay ningún usuario con ese nick, revisa la lista.")
                 return
             # Código para conectar con el usuario
-            outAddr = (data[3].encode("ascii"), int(data[4]))
+            outAddr = (data[3], int(data[4]))
             if not tcpCtrl.call(outAddr):
                 self.app.infoBox("Error", "No ha sido posible realizar la conexión.")
             else:
@@ -210,6 +210,7 @@ class VideoClient(object):
     def recibeVideo(self):
         try:
             data = self.bufferIn.get(block=False)[1]
+            data = data.split(b"#", 4)
             headers, inetFrame = data[:-1], data[-1]
             guiFrame = imgManager.inet2GUI(inetFrame)
             # Lo mostramos en el GUI
