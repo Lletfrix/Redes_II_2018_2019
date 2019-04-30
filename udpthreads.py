@@ -8,7 +8,6 @@ class UdpThreads:
         self.ip = None
         self.inPort = None
         self.outPort = None
-        self.peerAddr = (None, None)
         self.alive = None
         # Buffers
         self.bufferIn = bufferIn
@@ -56,13 +55,12 @@ class UdpThreads:
     def udpRecv(self):
         while(self.alive):
             self.lockIn.acquire()
-
             try:
-                data, sender = self.udpInSocket.recvfrom(4096)
+                data, sender = self.udpInSocket.recvfrom(1048576)
             except sck.error:
                 self.lockIn.release()
                 continue
-            if sender[0] is not self.peerAddr[0]:
+            if sender[0] != self.sendTo[0]:
                 self.lockIn.release()
                 continue
             try:
