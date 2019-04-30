@@ -66,7 +66,12 @@ class UdpThreads:
                 self.lockIn.release()
                 continue
             try:
-                self.bufferIn.put(data, block=False)
+                queueData = (int(data.split(b"#")[0]), data)
+            except ValueError:
+                self.lockIn.release()
+                continue
+            try:
+                self.bufferIn.put(queueData, block=False)
             except queue.Full:
                 self.lockIn.release()
                 continue

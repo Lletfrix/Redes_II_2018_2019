@@ -1,9 +1,13 @@
 import time
 import cv2
 import numpy as np
+from PIL import Image, ImageTk
 
+hQ = (640, 480)
+mQ = (320, 240)
+lQ = (160, 120)
 class FrameHandler:
-    def __init__(self, quality):
+    def __init__(self):
         self.fps = 30
         self.res = "HIGH"
         self.ratio = 50
@@ -11,21 +15,36 @@ class FrameHandler:
 
     def prepareFrame(self, frame):
         message = str(self.order)+'#'+str(time.time())+'#'+self.res+'#'+str(self.fps)+'#'
-        bytes_frame = self.compress(self, frame)
-        if bytes_frame is None:
+        message = message.encode('ascii')
+        frame = self.resizeFrame(frame)
+        guiFrame = self.frameFormat(frame)
+        inetFrame = self.compress(frame)
+        if inetFrame is None:
             return None
-        self.order = self.order + 1
-        return message+bytes_frame
+        self.order += 1
+        return message+inetFrame, guiFrame
 
-    def disectFrame(self, frame):
-        attr = frame.split('#')
-        attr[-1] = self.decompress(self, attr[-1])
-        return attr
+    def resizeFrame(self, frame):
+        if self.res == "HIGH":
+            return cv2.resize(frame, hQ)
+        if self.res == "MEDIUM":
+            return cv2.resize(frame, mQ)
+        if self.res == "LOW":
+            return cv2.resize(frame, lQ)
+        return None
+
+    def frameFormat(self, frame):
+        cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+        return ImageTk.PhotoImage(Image.fromarray(cv2_im))
+
+    def inet2GUI(self, inetFrame):
+        frame = self.decompress(inetFrame)
+        return self.frameFormat(frame)
 
     def compress(self, frame):
         encode_param = [cv2.IMWRITE_JPEG_QUALITY, self.ratio]
         result, encimg = cv2.imencode('.jpg', frame, encode_param)
-        if encimg == False:
+        if result == False:
             return None
         return encimg.tobytes()
 

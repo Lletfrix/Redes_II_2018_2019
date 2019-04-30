@@ -3,6 +3,7 @@ from appJar import gui
 from PIL import Image, ImageTk
 from controllink import *
 from udpthreads import *
+from frame_handler import *
 import numpy as np
 import cv2
 import socket
@@ -24,6 +25,7 @@ ipPublica = None
 port = "15951" #Random, maybe we can ask the user for it
 udpInPort = 15851
 vc = None
+imgManager = FrameHandler()
 
 def newCallPetition(signum, frame):
     vc.inCalling()
@@ -56,8 +58,9 @@ class VideoClient(object):
         self.app.startSubWindow("inVideo", modal=True)
         self.app.setGeometry(640,520)
         self.app.addLabel("video", "Video entrante")
+        self.app.addImage("peerCam", "imgs/webcam.gif")
         self.app.addButtons(["Colgar", "Pausar"], self.videoCallback)
-        self.app.setPollTime(500)
+        self.app.setPollTime(40)
         self.app.registerEvent(self.recibeVideo)
         self.app.stopSubWindow()
 
@@ -74,7 +77,7 @@ class VideoClient(object):
         # Registramos la función de captura de video
         # Esta misma función también sirve para enviar un vídeo
         self.cap = cv2.VideoCapture(0)
-        self.app.setPollTime(20)
+        self.app.setPollTime(40)
         self.app.registerEvent(self.capturaVideo)
 
         # Añadir los botones
@@ -86,36 +89,6 @@ class VideoClient(object):
 
     def start(self):
         self.app.go(startWindow="login")
-
-    # Función que captura el frame a mostrar en cada momento
-    def capturaVideo(self):
-
-        # Capturamos un frame de la cámara o del vídeo
-        ret, frame = self.cap.read()
-        frame = cv2.resize(frame, (640,480))
-        cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
-        img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
-
-        # Lo mostramos en el GUI
-        self.app.setImageData("video", img_tk, fmt = 'PhotoImage')
-
-        # Aquí tendría que el código que envia el frame a la red
-        # ...
-
-    # Establece la resolución de la imagen capturada
-    def setImageResolution(self, resolution):
-        # Se establece la resolución de captura de la webcam
-        # Puede añadirse algún valor superior si la cámara lo permite
-        # pero no modificar estos
-        if resolution == "LOW":
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 160)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 120)
-        elif resolution == "MEDIUM":
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
-        elif resolution == "HIGH":
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
     def loginButtons(self, button):
 
@@ -196,23 +169,26 @@ class VideoClient(object):
             self.app.hideSubWindow("list")
             self.app.removeGrid("Lista de Usuarios")
 
-    def videoCallback(self, button):
+    def videoCallback(self, button, pressed=True):
         if button == "Pausar":
             if self.paused: # Continue
-                tcpCtrl.resume()
+                if pressed:
+                    tcpCtrl.resume()
                 udpConn.resume()
                 self.app.setButton("Pausar", "Pausar")
                 self.paused = False
             else: # Pause
                 udpConn.hold()
-                tcpCtrl.hold()
+                if pressed:
+                    tcpCtrl.hold()
                 self.app.setButton("Pausar", "Continuar")
                 self.paused = True
 
         elif button == "Colgar":
             print("VOY A COLGAR")
             udpConn.hang()
-            tcpCtrl.hang()
+            if pressed:
+                tcpCtrl.hang()
             if self.paused:
                 udpConn.resume()
                 self.app.setButton("Pausar", "Pausar")
@@ -233,14 +209,50 @@ class VideoClient(object):
 
     def recibeVideo(self):
         try:
-            self.bufferIn.get(block=False)
+            data = self.bufferIn.get(block=False)[1]
+            headers, inetFrame = data[:-1], data[-1]
+            guiFrame = imgManager.inet2GUI(inetFrame)
+            # Lo mostramos en el GUI
+            self.app.setImageData("peerCam", guiFrame, fmt = 'PhotoImage')
         except queue.Empty:
             pass
         cmd, flag = tcpCtrl.check()
         if cmd is not None:
             if flag != self.paused:
-                self.videoCallback(cmd)
+                self.videoCallback(cmd, False)
         #show
+
+    # Función que captura el frame a mostrar en cada momento
+    def capturaVideo(self):
+
+        # Capturamos un frame de la cámara o del vídeo
+        ret, frame = self.cap.read()
+
+        inetFrame, guiFrame = imgManager.prepareFrame(frame)
+
+        # Lo mostramos en el GUI
+        self.app.setImageData("video", guiFrame, fmt = 'PhotoImage')
+
+        # Lo mandamos a enviar por UDP
+        if not self.paused:
+            try:
+                self.bufferOut.put(inetFrame, block=False)
+            except queue.Full:
+                pass
+    # Establece la resolución de la imagen capturada
+    def setImageResolution(self, resolution):
+        # Se establece la resolución de captura de la webcam
+        # Puede añadirse algún valor superior si la cámara lo permite
+        # pero no modificar estos
+        if resolution == "LOW":
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 160)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 120)
+        elif resolution == "MEDIUM":
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+        elif resolution == "HIGH":
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
     def getUsrDetails(self, usr):
         message = "QUERY " + usr
@@ -268,7 +280,7 @@ class VideoClient(object):
 if __name__ == '__main__':
 
     bufferIn = queue.Queue()
-    bufferOut = queue.Queue()
+    bufferOut = queue.PriorityQueue()
 
     udpConn = UdpThreads(bufferIn, bufferOut)
     tcpCtrl = ControlLink()
