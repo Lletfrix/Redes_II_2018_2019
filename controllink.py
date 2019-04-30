@@ -54,7 +54,7 @@ class ControlLink:
         self.peerSocket.settimeout(timeoutDelay)
         try:
             self.peerSocket.connect(addr)
-            self.peerSocket.send(b"CALLING " + self.ownNick + b" " + self.udpInPort)
+            self.peerSocket.send(b"CALLING " + self.ownNick + b" " + str(self.udpInPort).encode('ascii'))
             resp = self.peerSocket.recv(RECV_SZ) # TODO: Handle invalid resp
             (cmd, nick, port) = resp.decode('ascii').split(' ')
         except sck.timeout:
@@ -106,7 +106,7 @@ class ControlLink:
                     return
                 if cmd == "CALLING":
                     print("ENVIAR SEÑAL")
-                    self.setDest(nick.encode("ascii"), int(udpInPort), pAddr)
+                    self.setDest(nick.encode("ascii"), int(udpInPort), pAddr[0])
                     # send signal to Main Thread
                     if self.operatingSystem == 'Windows':
                         os.kill(os.getpid(), signal.CTRL_C_EVENT)
