@@ -124,24 +124,24 @@ class ControlLink:
 
     def check(self):
         if self.peerSocket is None:
-            return None
+            return None, None
+        self.peerSocket.settimeout(0)
         try:
-            data = self.peerSocket.recv(RECV_SZ, sck.MSG_DONTWAIT)
+            data = self.peerSocket.recv(RECV_SZ)
         except sck.error:
-            return None
+            data  = b"NONE NONE"
+        self.peerSocket.settimeout(timeoutDelay)
         try:
             (cmd, nick) = data.decode('ascii').split(' ')
         except ValueError:
             cmd = data.decode('ascii')
-
-        if cmd is "CALL_END":
-            return "Colgar"
-        elif cmd is "CALL_HOLD":
-            return "Pausar"
-        elif cmd is "CALL_RESUME":
-            return "Pausar"
-
-        return None
+        if cmd == "CALL_END":
+            return "Colgar", None
+        elif cmd == "CALL_HOLD":
+            return "Pausar", True
+        elif cmd == "CALL_RESUME":
+            return "Pausar", False
+        return None, None
 
     def hold(self):
         # TODO: Handle errors
