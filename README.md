@@ -10,5 +10,5 @@ nuestra [Wiki](https://vega.ii.uam.es/2302-02-19/practica1/wikis/home).
 
 ## Autores
 Los autores de este proyecto son:
-* **Rafael Sánchez Sánchez - [mail](rafael.sanchezs@estudiante.uam.es)
-* **Sergio Galán Martín - [mail](sergio.galanm@estudiante.uam.es)
+* **Rafael Sánchez Sánchez** - [mail](rafael.sanchezs@estudiante.uam.es)
+* **Sergio Galán Martín** - [mail](sergio.galanm@estudiante.uam.es)
