@@ -3,7 +3,7 @@ Este es el repositorio de la práctica 1 de la asignatura Redes de Comunicación
 II de la UAM.
 
 ## Funcionalidad
-La funcionalidad de esta práctica es ejercer de servidor concurrente HTTP en el
+La funcionalidad de esta práctica es ejercer de servidor concurrente HTTP en C en el
 que se aloja una página web contenida en el directorio /www.
 Puedes encontrar muchos más detalles de funcionalidad e implementación en
 nuestra [Wiki](https://vega.ii.uam.es/2302-02-19/practica1/wikis/home).
