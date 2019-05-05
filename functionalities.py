@@ -9,6 +9,8 @@ headers = {'content-type': 'application/json', 'authorization': None}
 endpoints = {'create':'users/register', 'userdelete':'users/delete', 'search':'users/search',
               'getpk':'users/getPublicKey', 'up':'files/upload', 'dwn':'files/download',
                'list':'files/list', 'filedelete':'files/delete'}
+up_route = 'Uploads/'
+down_route = 'Downloads/'
 
 def build_url(key):
     return api_url+endpoints[key]
@@ -49,13 +51,14 @@ def delete_id_routine(userID):
         print('OK')
 
 def upload_routine(path, private_key, public_key):
-    if os.path.isfile(path):
+    abspath = up_route+path
+    if os.path.isfile(abspath):
         url = build_url('up')
         up_headers = dict(headers)
         up_headers.pop('content-type') #Quitamos el content-type json
         #Encrypt
         print('Obteniendo fichero...', end='')
-        doc = docusign(path)
+        doc = docusign(abspath)
         print('OK')
         print('Generando firma digital...', end='')
         doc.get_digital_sign(private_key)
@@ -118,7 +121,8 @@ def download_routine(fileid, private_key, public_key):
         print('OK')
         print('Fichero obtenido. Guardando fichero en disco...')
         filename = resp.headers['content-disposition'].split('\"')[-2]
-        f = open(filename, 'wb')
+        fileroute = down_route+filename
+        f = open(fileroute, 'wb')
         f.write(doc.content)
         print('Fichero con ID: ' + fileid + ' guardado correctamente con nombre: ' + filename)
 
