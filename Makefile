@@ -5,7 +5,7 @@ LFLAGS := -lpthread -lm
 ########################################################
 INCDIR := ../includes
 LIBDIR := ../lib
-LIBS := my_lib.a picohttpparser.a
+LIBS := my_lib.a picohttpparser.a config.a
 LIB1 := my_lib.a
 LIB2 := picohttpparser.a
 OBJECTS := connections.o daemon.o process.o thrpool.o linkedlist.o
@@ -16,7 +16,7 @@ TEST := test-http-request test-llist test-thrpool
 all: server
 
 server: src/server.o makelib
-	$(CC) $(CFLAGS) -o $@ src/server.o lib/my_lib.a lib/picohttpparser.a $(LFLAGS)
+	$(CC) $(CFLAGS) -o $@ src/server.o lib/my_lib.a lib/picohttpparser.a lib/config.a $(LFLAGS)
 
 src/server.o: src/server.c
 	$(CC) $(CFLAGS) -c src/server.c -o $@
@@ -26,3 +26,4 @@ makelib:
 
 clean:
 	rm src/*.o server
+	sudo rm /out*.txt
