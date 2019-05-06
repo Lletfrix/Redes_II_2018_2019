@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
+#include <syslog.h>
 #include <pthread.h>
 #include "../includes/picohttpparser.h"
 #include "../includes/process.h"
@@ -448,6 +449,7 @@ int run_script(char* abspath, char* body, char* result){
         snprintf(name, strlen("out38D7EA4C67FFF.txt"), "out%lx.txt", pthread_self());
         fp = fopen(name, "w");
         if(!fp){
+            syslog(LOG_DEBUG, "Couldn't open file: %s. Are you sure you are running this with super user rights??", name);
             free(name);
             return EXIT_FAILURE;
         }
@@ -459,6 +461,7 @@ int run_script(char* abspath, char* body, char* result){
     }else{
         strcat(command, " < /dev/null");
     }
+    syslog(LOG_DEBUG, "%lu: Going to run command: %s", pthread_self(), command);
     pipe = popen(command, "r");
     if(!pipe) EXIT_FAILURE;
     fread(result, sizeof(char), MAXRESULT, pipe);
