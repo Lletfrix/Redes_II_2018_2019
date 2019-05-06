@@ -43,6 +43,7 @@ class VideoClient(object):
         self.bufferOut = bufferOut  #Buffer de salida de frames
         self.udpConn = udpConn  #Controlador de conexión UDP
         self.tcpCtrl = tcpCtrl  #Controlador de conexión TCP
+        self.table = None   #Tabla de usuarios
         # Creamos una variable que contenga el GUI principal
         self.app = gui("Redes2 - P2P", window_size) #Inicializamos la gui
         self.app.setGuiPadding(10,10)
@@ -160,26 +161,27 @@ class VideoClient(object):
                 self.app.infoBox("Error", "No hay ningún usuario registrado")
             else:
                 splitted = users[16:].decode("ascii").split("#")    #Con el 16 quitamos el header
-                table = [["Nick", "IP", "Port"]]    #Primera fila de la tabla
+                self.table = [["Nick", "IP", "Port"]]    #Primera fila de la tabla
                 err = 0 #Contador de usuarios erroneos
                 for i in range(len(splitted)-1):
                     aux_split = splitted[i].split() #Obtenemos los campos de cada usuario
                     if len(aux_split) < 3:  #Si tiene menos de tres campos es un error del DS, pero lo asumimos
                         err += 1    #Contador errores para indexar bien en la tabla
                         continue    #Pasamos al siguiente usuario
-                    table.append([])
+                    self.table.append([])
                     for j in range(3):
-                        table[i+1-err].append(aux_split[j]) #Añadimos a la tabla los datos del usuario
+                        self.table[i+1-err].append(aux_split[j]) #Añadimos a la tabla los datos del usuario
                 self.app.openSubWindow("list")
-                self.app.addGrid("Lista de Usuarios", table, action=self.callByRow)    #Añadimos la grid a su SubWindow
+                self.app.addGrid("Lista de Usuarios", self.table, action=self.callByRow)    #Añadimos la grid a su SubWindow
                 self.app.stopSubWindow()
                 self.app.showSubWindow("list")  #Mostramos la SubWindow de la lista de usuarios
         elif button == "Cancelar":
             self.app.hideSubWindow("list")  #Escondemos la SubWindow
             self.app.removeGrid("Lista de Usuarios")    #Borramos la lista de usuarios
-            #TODO
-    def callByRow(self, data):
-        outAddr = (data[1],data[2])
+
+    #Función que llama a un usuario tras pulsar su botón en la lista de usuarios
+    def callByRow(self, row):
+        outAddr = (self.table[row+1][1], int(self.table[row+1][2]))  #Obtenemos la dirección de la tabla
         if not tcpCtrl.call(outAddr):   #Si no se puede establecer la conexión, informamos
             self.app.infoBox("Error", "No ha sido posible realizar la conexión.")
         else:
@@ -205,7 +207,7 @@ class VideoClient(object):
             udpConn.hang()  #Terminamos la emisión de frames
             if pressed: #Si lo hemos pulsado nosotros
                 tcpCtrl.hang()  #Notificamos al otro que queremos colgar
-            if self.paused: Si estaba en pausa la llamada
+            if self.paused: #Si estaba en pausa la llamada
                 udpConn.resume()    #TODO
                 self.app.setButton("Pausar", "Pausar")  #Cambiamos el botón a Pausar para la siguiente llamada
                 self.paused = False #Cambiamos la flag de pausa
