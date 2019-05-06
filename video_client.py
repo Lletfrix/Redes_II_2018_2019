@@ -144,7 +144,6 @@ class VideoClient(object):
                 self.app.infoBox("Error", "No hay ningún usuario con ese nick, revisa la lista.")
                 return
             # Código para conectar con el usuario
-            # TODO version
             outAddr = (data[3], int(data[4]))   #Dirección del cliente
             if not tcpCtrl.call(outAddr):   #Si no se puede establecer la conexión, informamos
                 self.app.infoBox("Error", "No ha sido posible realizar la conexión.")
