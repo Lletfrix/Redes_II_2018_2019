@@ -15,15 +15,13 @@ down_route = 'Downloads/'
 def build_url(key):
     return api_url+endpoints[key]
 
-def create_id_routine(name, email, alias=None): #alias sirve para algo?
+def create_id_routine(name, email): #alias sirve para algo?
     print('Generando par de claves RSA de 2048 bits...', end='')
     rsaKey = RSA.generate(2048)
     pkPEM = rsaKey.publickey().exportKey().decode('ascii') #Get pem format
-
-    totalName = name+'#'+alias if alias else name #Concatenate alias if available
     print('OK')
 
-    params = {'nombre': totalName, 'email': email, 'publicKey': pkPEM}
+    params = {'nombre': name, 'email': email, 'publicKey': pkPEM}
     url = build_url('create')
     resp = req.post(url, json=params, headers=headers)
 
