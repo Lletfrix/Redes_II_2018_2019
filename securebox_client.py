@@ -23,6 +23,8 @@ def load_private_key():
 def load_public_key(user_id):
     print('Obteniendo clave pública del destinatario...', end='')
     pkPEM = get_publicKey(user_id)
+    if pkPEM is None:
+        return
     print('OK')
     public_key = RSA.import_key(pkPEM)
     return public_key
