@@ -154,13 +154,17 @@ class VideoClient(object):
             if users[:3] == b"NOK":
                 self.app.infoBox("Error", "No hay ningún usuario registrado")
             else:
-                splitted = users[16:].decode("utf-8").split("#")    #Con el 16 quitamos el header
+                splitted = users[16:].decode("ascii").split("#")    #Con el 16 quitamos el header
                 table = [["Nick", "IP", "Port"]]
+                err = 0
                 for i in range(len(splitted)-1):
                     aux_split = splitted[i].split()
+                    if len(aux_split) < 3:
+                        err += 1    #Contador errores para indexar bien en la tabla
+                        continue
                     table.append([])
                     for j in range(3):
-                        table[i+1].append(aux_split[j])
+                        table[i+1-err].append(aux_split[j])
                 self.app.openSubWindow("list")
                 self.app.addGrid("Lista de Usuarios", table)
                 self.app.stopSubWindow()
