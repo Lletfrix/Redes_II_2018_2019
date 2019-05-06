@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include "../includes/picohttpparser.h"
 #include "../includes/process.h"
+#include "../includes/config.h"
 
 #define MAXBUF 4096
 #define MAXHEADERS 100
@@ -33,13 +34,6 @@
 #define MAXVALUE 200
 #define MAXRESULT 1000
 #define MAXBODY 99999
-
-/* CONFIG FILE*/
-#define ABSDIR "/home/lletfrix/server/www"
-#define DIR404 "/home/lletfrix/server/www/404.html"
-#define DIR500 "/home/lletfrix/server/www/500.html"
-#define SCRTXT "/home/lletfrix/server/scripts/aux.txt"
-#define SVRNAME "MyServer"
 
 int get_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd);
 int post_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd, char* body);
@@ -137,7 +131,7 @@ int general_headers(char** res){
     gmt_time_http(res, MAXAUX);
     strcat(*res, "\r\n");
     strcat(*res, "Server: ");
-    strcat(*res, SVRNAME);
+    strcat(*res, config_get("svrname"));
     strcat(*res, "\r\n");
     return 1;
 }
@@ -209,7 +203,7 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
         return EXIT_FAILURE;
     }
     //Build path with index.html
-    strcat(abspath, ABSDIR);
+    strcat(abspath, config_get("absdir"));
     if(!strcmp(path, "/")){
         strcat(path, "index.html");
     }
@@ -313,7 +307,7 @@ int options_handler(char* path, struct phr_header* headers, size_t num_headers, 
 int post_handler(char* path_aux, struct phr_header* headers, size_t num_headers, int clientfd, char* body){
     char* result;
     char abspath[MAXPATH];
-    sprintf(abspath, "%s", ABSDIR);
+    sprintf(abspath, "%s", config_get("absdir"));
     strcat(abspath, path_aux);//path.ext?dakfjdks
     result = calloc(MAXRESULT, sizeof(char));
     if(!result){
@@ -336,12 +330,12 @@ int not_found_response(int clientfd){
     strcat(response, "HTTP/1.1 404 Not Found\r\n");
     general_headers(&response);
     strcat(response, "Content-Length: ");
-    html404 = open(DIR404, O_RDONLY);
+    html404 = open(config_get("dir404"), O_RDONLY);
     if(html404 < 0){
         strcat(response, "0\r\n\r\n");
     }
     else{
-        size = get_size(DIR404);
+        size = get_size(config_get("dir404"));
         sprintf(sizestr, "%d", size);
         strcat(response, sizestr);
         strcat(response, "\r\n");
@@ -397,12 +391,12 @@ int internal_error_response(int clientfd){
     strcat(response, "HTTP/1.1 500 Internal Server Error\r\n");
     general_headers(&response);
     strcat(response, "Content-Length: ");
-    html500 = open(DIR500, O_RDONLY);
+    html500 = open(config_get("dir500"), O_RDONLY);
     if(html500 < 0){
         strcat(response, "0\r\n\r\n");
     }
     else{
-        size = get_size(DIR500);
+        size = get_size(config_get("dir500"));
         sprintf(sizestr, "%d", size);
         strcat(response, sizestr);
         strcat(response, "\r\n");
@@ -445,8 +439,8 @@ int run_script(char* abspath, char* body, char* result){
     strcat(command, abspath);
 
     if(body){
-        name = calloc(1, strlen("out38D7EA4C67FFF.txt\0"));
-        snprintf(name, strlen("out38D7EA4C67FFF.txt"), "out%lx.txt", pthread_self());
+        name = calloc(1, MAXPATH/4 + strlen("out38D7EA4C67FFF.txt\0"));
+        snprintf(name, MAXPATH/4 + strlen("out38D7EA4C67FFF.txt"), "%s/out%lx.txt", config_get("cwd") ,pthread_self());
         fp = fopen(name, "w");
         if(!fp){
             syslog(LOG_DEBUG, "Couldn't open file: %s. Are you sure you are running this with super user rights??", name);

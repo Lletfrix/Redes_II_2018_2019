@@ -4,7 +4,7 @@
  * Authors: Miguel Baquedano, Sergio Cordero, Elias Hernandis
  *          and Rafael Sánchez.
  *
- * Lead author: <replace me>
+ * Lead author: Elias Hernandis
  */
 
 

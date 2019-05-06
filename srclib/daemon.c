@@ -6,11 +6,11 @@
 #include <stdlib.h>
 #include "../includes/daemon.h"
 
-int demonizar(const char *service){
+int demonizar(const char *service, char* cwd){
     signal(SIGPIPE, SIG_IGN);
     switch (fork()) {
         case -1:
-            return(-1);
+            return -1;
         case 0:
             break;  //Este es el hijo
         default:
@@ -21,6 +21,7 @@ int demonizar(const char *service){
         //TODO: Handle this
     };
     umask(S_IRWXU | S_IRWXG | S_IRWXO);
+    getcwd(cwd, PATHMAX);
     if(!chdir("/")){
         //TODO: Handle this
     };

@@ -26,4 +26,4 @@ makelib:
 
 clean:
 	rm src/*.o server
-	sudo rm /out*.txt
+	sudo rm ./out*.txt

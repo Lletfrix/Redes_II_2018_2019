@@ -10,7 +10,6 @@
 
 #include "../includes/connections.h"
 
-#define MAXBUF 1024
 #define MAXQUEUE 20
 
 int tcp_listen(char* if_addr, int port){
@@ -44,11 +43,6 @@ int tcp_listen(char* if_addr, int port){
 }
 
 int accept_connection(int listen_fd, struct sockaddr* client_sock, socklen_t* clilen){
-    /*int clientfd;
-    if((clientfd = accept(listen_fd, client_sock, clilen)) == -1){
-        //TODO
-    }
-    return client_fd;*/
     return accept(listen_fd, client_sock, clilen);
 }
 

@@ -4,7 +4,7 @@
  * Authors: Miguel Baquedano, Sergio Cordero, Elias Hernandis
  *          and Rafael Sánchez.
  *
- * Lead author: <replace me>
+ * Lead author: Elias Hernandis
  */
 
 
@@ -28,8 +28,8 @@ typedef struct {
 } ConfigDict;
 
 /*
- * The gloval config dictionary (this is the reason you don't need to pass the
- * dictionary arround when retrieving configuration options.
+ * The global config dictionary (this is the reason you don't need to pass the
+ * dictionary around when retrieving configuration options.
  */
 ConfigDict *cd;
 

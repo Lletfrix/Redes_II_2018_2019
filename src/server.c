@@ -17,9 +17,7 @@
 #include "../includes/config.h"
 #include "../includes/error_handling.h"
 
-#define MAXTHR 15
-
-#define CONFIG_PATH "config.ini"
+#define CONFIG_PATH "/config.ini"
 
 int sockfd;
 struct thrpool* pool;
@@ -37,6 +35,7 @@ void handle_sigint(int sig)
         close(i);
     }
 
+    //config_destroy(); TODO: fix this
     exit(EXIT_SUCCESS);
 }
 
@@ -53,30 +52,33 @@ void *func(void *args){
     socklen_t addrlen = sizeof(struct sockaddr_in);
     while(1){
         pthread_mutex_lock(&mutex_accept);
-        syslog(LOG_INFO, "Hilo %lu:\t Voy a aceptar una conexión.\n", pthread_self());
+        syslog(LOG_INFO, "Hilo %lu: Voy a aceptar una conexión.", pthread_self());
         clientfd = accept_connection(sockfd, (struct sockaddr*)&client, &addrlen);
         pthread_mutex_unlock(&mutex_accept);
-        syslog(LOG_INFO, "Hilo %lu:\t Voy a procesar una petición.\n", pthread_self());
+        syslog(LOG_INFO, "Hilo %lu: Voy a procesar una petición.", pthread_self());
         process_http(clientfd);
         if(clientfd >= 0)
-        syslog(LOG_INFO, "Hilo %lu:\t Voy a cerrar una conexión.\n", pthread_self());
-            close_connection(clientfd);
+        syslog(LOG_INFO, "Hilo %lu: Voy a cerrar una conexión.", pthread_self());
+        close_connection(clientfd);
     }
     return NULL;
 }
 
 int main(int argc, char **argv){
+    char cwd[PATHMAX];
+    char config_path[PATHMAX];
     char ip[] = "127.0.0.1";
     int port = 5001;
-
-    demonizar(argv[0]);
-    if (UINT_ERROR == load_config_from_file(CONFIG_PATH)){
-        syslog(LOG_DEBUG, "%s", "No se ha podido cargar el diccionario de configuración del servidor, revisa que existe "CONFIG_PATH"en la ruta / y que tienes permisos de super usuario");
+    demonizar(argv[0], cwd);
+    strcpy(config_path, cwd);
+    strcat(config_path, CONFIG_PATH);
+    if (UINT_ERROR == load_config_from_file(config_path)){
+        syslog(LOG_DEBUG, "%s - Archivo con ruta: %s", "No se ha podido cargar el diccionario de configuración del servidor.", config_path);
         exit(0);
     }
-
+    config_set("cwd", cwd);
     syslog(LOG_INFO, "%s", "Creando pool de hilos.");
-    pool = thrpool_new(MAXTHR, func);
+    pool = thrpool_new(config_get_int("maxthreads"), func);
 
     syslog(LOG_INFO, "%s%s%s%d.", "Escuchando en la ip: ", ip, " con puerto ", port);
     sockfd = tcp_listen(ip, port);
@@ -85,8 +87,7 @@ int main(int argc, char **argv){
     signal(SIGUSR1, handle_sigusr1);
 
     syslog(LOG_INFO, "%s", "Lanzando pool de hilos.");
-    thrpool_execute(pool, MAXTHR);
+    thrpool_execute(pool, config_get_int("maxthreads"));
     for(;;) pause();
-    //config_destroy(); TODO: Handle the way the program ends to free up config dictionary
     return 0;
 }
