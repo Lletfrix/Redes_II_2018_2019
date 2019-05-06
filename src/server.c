@@ -60,8 +60,6 @@ void *func(void *args){
 int main(int argc, char **argv){
     char ip[] = "127.0.0.1";
     int port = 5001;
-    struct sockaddr_in client;
-    socklen_t addrlen = sizeof(client);
 
     demonizar(argv[0]);
 
