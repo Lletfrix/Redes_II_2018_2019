@@ -18,12 +18,12 @@ int demonizar(const char *service, char* cwd){
     }
 
     if(setsid() == -1){
-        //TODO: Handle this
+        return -1;
     };
     umask(S_IRWXU | S_IRWXG | S_IRWXO);
     getcwd(cwd, PATHMAX);
     if(!chdir("/")){
-        //TODO: Handle this
+        return -1;
     };
     int n_fd = getdtablesize();
     for(int i = 0; i < n_fd; ++i){
