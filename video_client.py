@@ -214,7 +214,8 @@ class VideoClient(object):
             headers, inetFrame = data[:-1], data[-1]
             guiFrame = imgManager.inet2GUI(inetFrame)
             # Lo mostramos en el GUI
-            self.app.setImageData("peerCam", guiFrame, fmt = 'PhotoImage')
+            if not self.paused:
+                self.app.setImageData("peerCam", guiFrame, fmt = 'PhotoImage')
         except queue.Empty:
             pass
         cmd, flag = tcpCtrl.check()
