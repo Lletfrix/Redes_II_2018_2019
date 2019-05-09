@@ -39,17 +39,19 @@ class UdpThreads:
     def udpSend(self):
         while(self.alive):  #Mientras la llamada esté "viva"
             self.lockOut.acquire()  #Bajamos el mutex
+            self.lockOut.release()
             try:
                 data = self.bufferOut.get(block=False)  #Obtenemos un frame del buffer de envío
             except queue.Empty: #Si la cola está vacía
-                self.lockOut.release()  #Subimos el mutex
+                #self.lockOut.release()  #Subimos el mutex
                 continue
             try:
+                print("He enviado un frame")
                 self.udpOutSocket.sendto(data, self.sendTo) #Enviamos el frame
             except sck.error:   #Si hay algún error en el socket
-                self.lockOut.release()  #Subimos el mutex
+                #self.lockOut.release()  #Subimos el mutex
                 continue
-            self.lockOut.release()  #Subimos el mutex tras enviar el frame
+            #self.lockOut.release()  #Subimos el mutex tras enviar el frame
         #Si la llamada ha terminado, intentamos levantar el mutex
         try:
             self.lockOut.release()

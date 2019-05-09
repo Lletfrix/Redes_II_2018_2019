@@ -9,8 +9,9 @@ mQ = (320, 240)
 lQ = (160, 120)
 class FrameHandler:
     def __init__(self):
-        self.fps = 30   #FPS de video recibido
-        self.res = "HIGH"   #Calidad del video recibido
+        self.fps = 25   #FPS de video recibido
+        #self.res = "HIGH"
+        self.res = str(hQ[0])+"x"+str(hQ[1])   #Calidad del video recibido
         self.ratio = 50    #Ratio de compresión
         self.order = 0  #Número de secuencia
 
@@ -32,14 +33,7 @@ class FrameHandler:
     # input frame Frame a ser ajustado
     # output frame ajustado
     def resizeFrame(self, frame):
-        if self.res == "HIGH":
-            return cv2.resize(frame, hQ)
-        if self.res == "MEDIUM":
-            return cv2.resize(frame, mQ)
-        if self.res == "LOW":
-            return cv2.resize(frame, lQ)
-        return None
-
+        return cv2.resize(frame, self._res2tuple(self.res))
     # Función que formatea el frame para ser mostrado por la gui
     # input frame Frame a ser formateado
     # output frame formateado
@@ -83,3 +77,6 @@ class FrameHandler:
     # Reset del contador del número de secuencia
     def resetCount(self):
         self.order = 0
+
+    def _res2tuple(self, res):
+        return tuple([int(i) for i in res.split('x')])

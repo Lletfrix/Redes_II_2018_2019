@@ -11,6 +11,7 @@ import requests
 import getpass
 import queue
 import signal
+import time
 import platform
 
 MAX_SIZE = 1048576  #Máximo tamaño de lista de usuarios (1MB)
@@ -35,7 +36,7 @@ def newCallPetition(signum, frame):
 class VideoClient(object):
     #Función de instanciación
     def __init__(self, window_size, bufferIn, bufferOut, udpConn, tcpCtrl):
-        self.paused = False #Flag que representa si la llamada está en pausa o no
+        self.paused = True #Flag que representa si la llamada está en pausa o no
         self.ip = None  #Ip con la que se registra el usuario
         self.nick = None    #Nick con el que se registra el ususario
         self.pwd = None     #Contraseña con la que se registra el usuario
@@ -44,6 +45,8 @@ class VideoClient(object):
         self.udpConn = udpConn  #Controlador de conexión UDP
         self.tcpCtrl = tcpCtrl  #Controlador de conexión TCP
         self.table = None   #Tabla de usuarios
+        self.currtime = time.time()
+        self.oldtime = time.time()
         # Creamos una variable que contenga el GUI principal
         self.app = gui("Redes2 - P2P", window_size) #Inicializamos la gui
         self.app.setGuiPadding(10,10)
@@ -63,7 +66,7 @@ class VideoClient(object):
         self.app.addLabel("video", "Video entrante")
         self.app.addImage("peerCam", "imgs/webcam.gif")
         self.app.addButtons(["Colgar", "Pausar"], self.videoCallback)
-        self.app.setPollTime(40)
+        self.app.setPollTime(60)
         self.app.registerEvent(self.recibeVideo)    #Establecemos el polltime y la función de recepción de video
         self.app.stopSubWindow()    #Definimos la ventana y los botones del video entrante
 
@@ -80,7 +83,7 @@ class VideoClient(object):
         # Registramos la función de captura de video
         # Esta misma función también sirve para enviar un vídeo
         self.cap = cv2.VideoCapture(0)  #Capturamos la imagen de la webcam disponible
-        self.app.setPollTime(40)
+        self.app.setPollTime(60)
         self.app.registerEvent(self.capturaVideo)   #Establecemos el polltime y la función de captura de video
 
         # Añadir los botones
@@ -145,7 +148,7 @@ class VideoClient(object):
                 return
             # Código para conectar con el usuario
             outAddr = (data[3], int(data[4]))   #Dirección del cliente
-            if not tcpCtrl.call(outAddr):   #Si no se puede establecer la conexión, informamos
+            if not self.tcpCtrl.call(outAddr):   #Si no se puede establecer la conexión, informamos
                 self.app.infoBox("Error", "No ha sido posible realizar la conexión.")
             else:
                 self.startCall()    #Si hemos podido conectar, comenzamos la llamada
@@ -181,7 +184,7 @@ class VideoClient(object):
     #Función que llama a un usuario tras pulsar su botón en la lista de usuarios
     def callByRow(self, row):
         outAddr = (self.table[row+1][1], int(self.table[row+1][2]))  #Obtenemos la dirección de la tabla
-        if not tcpCtrl.call(outAddr):   #Si no se puede establecer la conexión, informamos
+        if not self.tcpCtrl.call(outAddr):   #Si no se puede establecer la conexión, informamos
             self.app.infoBox("Error", "No ha sido posible realizar la conexión.")
         else:
             self.startCall()
@@ -191,25 +194,28 @@ class VideoClient(object):
         if button == "Pausar":
             if self.paused: #Si está en pausa
                 if pressed:
-                    tcpCtrl.resume()    #Si hemos sido nosotros los que hemos pulsado el botón, notificamos al otro
-                udpConn.resume()    #Continuamos la emisión de frames
+                    self.tcpCtrl.resume()    #Si hemos sido nosotros los que hemos pulsado el botón, notificamos al otro
+                self.udpConn.resume()    #Continuamos la emisión de frames
                 self.app.setButton("Pausar", "Pausar") #Ponemos el botón a pausar
                 self.paused = False #Cambiamos la flag de pausa
             else: # Si no está en pausa
-                udpConn.hold()  #Pausamos la emisión de frames
+                self.udpConn.hold()  #Pausamos la emisión de frames
                 if pressed:
-                    tcpCtrl.hold()  #Si hemos pulsado el botón nosotros, notificamos al otro
+                    self.tcpCtrl.hold()  #Si hemos pulsado el botón nosotros, notificamos al otro
                 self.app.setButton("Pausar", "Continuar")   #Ponemos el botón a continuar
                 self.paused = True  #Cambiamos el flag de pausa
 
         elif button == "Colgar":
-            udpConn.hang()  #Terminamos la emisión de frames
+            self.udpConn.hang()  #Terminamos la emisión de frames
             if pressed: #Si lo hemos pulsado nosotros
-                tcpCtrl.hang()  #Notificamos al otro que queremos colgar
+                self.tcpCtrl.hang()  #Notificamos al otro que queremos colgar
+            else:
+                self.tcpCtrl.toggleBusy()
             if self.paused: #Si estaba en pausa la llamada
-                udpConn.resume()    #TODO
+                self.udpConn.resume()    #TODO
                 self.app.setButton("Pausar", "Pausar")  #Cambiamos el botón a Pausar para la siguiente llamada
-                self.paused = False #Cambiamos la flag de pausa
+
+            self.paused = True #Cambiamos la flag de pausa
             self.app.hideSubWindow("inVideo")   #Escondemos la ventana de video entrante
 
     #Función que informa al usuario de que está recibiendo una llamada y le permite cogerla o rechazarla
@@ -237,7 +243,7 @@ class VideoClient(object):
                 self.app.setImageData("peerCam", guiFrame, fmt = 'PhotoImage')
         except queue.Empty:
             pass
-        cmd, flag = tcpCtrl.check() #TODO
+        cmd, flag = self.tcpCtrl.check() #TODO
         if cmd is not None:
             if flag != self.paused:
                 self.videoCallback(cmd, False)
@@ -251,12 +257,19 @@ class VideoClient(object):
         inetFrame, guiFrame = imgManager.prepareFrame(frame)    #Lo preparamos para mostrar y enviar
 
         self.app.setImageData("video", guiFrame, fmt = 'PhotoImage')    # Lo mostramos en el GUI
+        self.currtime = time.time()
+        diff = self.currtime - self.oldtime
+        self.oldtime = self.currtime
+
+        print("He capturado un frame, la ultima llamada fue hace:",1000*diff, "ms")
 
         # Lo mandamos a enviar por UDP
         if not self.paused: #Si la llamada no está pausada
             try:
+                print("He metido un frame en la cola")
                 self.bufferOut.put(inetFrame, block=False)  #Metemos el frame en el buffer de envio
             except queue.Full:  #Si la cola está llena, desechamos el frame
+                print("La cola de envío está llena")
                 pass
     # Establece la resolución de la imagen capturada
     def setImageResolution(self, resolution):   #TODO
@@ -287,6 +300,7 @@ class VideoClient(object):
 
     #Función que inicia una llamada
     def startCall(self):    #TODO
+        self.bufferIn.queue.clear()
         self.udpConn.start(self.tcpCtrl.getDest())  #iniciar los hilos de UDP
         self.paused = False #Inicializamos la flag de pausa
         self.app.setButton("Pausar", "Pausar")  #Inicializamos el botón de pausa

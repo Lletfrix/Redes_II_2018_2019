@@ -74,10 +74,9 @@ class ControlLink:
             self.peerSocket.send(b"CALLING " + self.ownNick + b" " + str(self.udpInPort).encode('ascii'))
             resp = self.peerSocket.recv(RECV_SZ) # TODO: Handle invalid resp
             (cmd, nick, port) = resp.decode('ascii').split(' ')
-        except sck.timeout:
-            return False
-        except ConnectionError:
-            return False    #Si ha habido errores de socket o conexión, error
+        except (sck.timeout, ConnectionError, ValueError):
+            self.toggleBusy()
+            return False #Si ha habido errores de socket o conexión, error
         #Si nos responde con CALL_ACEPTED, establecemos la comunicación
         if cmd == "CALL_ACCEPTED":
             self.setDest(nick.encode('ascii'), int(port), addr[0])
@@ -104,7 +103,11 @@ class ControlLink:
             (pSocket, pAddr) = self.svSocket.accept()
             #Si estamos en llamada, devolvemos CALL_BUSY y cerramos conexión
             if self.getBusyState():
-                pSocket.send(b"CALL_BUSY")
+                try:
+                    pSocket.send(b"CALL_BUSY")
+                except ConnectionError:
+                    pass
+
                 pSocket.close()
             #Si no estamos en llamada
             else:
@@ -115,7 +118,7 @@ class ControlLink:
                 try:
                     data = self.peerSocket.recv(RECV_SZ)
                 #Si hay timeout cerramos la conexión
-                except sck.timeout:
+                except (sck.timeout, ConnectionError):
                     self.peerSocket.close()
                     self.peerSocket = None
                     self.toggleBusy()
@@ -143,10 +146,16 @@ class ControlLink:
     def answerCall(self, answer):
         #Si la acepta, notificamos al peer de que la hemos aceptado
         if answer:
-            self.peerSocket.send(b"CALL_ACCEPTED " + self.ownNick + b" " + str(self.udpInPort).encode("ascii"))
+            try:
+                self.peerSocket.send(b"CALL_ACCEPTED " + self.ownNick + b" " + str(self.udpInPort).encode("ascii"))
+            except ConnectionError:
+                pass
         #Si no, avisamos al peer que la hemos rechazado y cerramos la conexión
         else:
-            self.peerSocket.send(b"CALL_DENIED " + self.ownNick)
+            try:
+                self.peerSocket.send(b"CALL_DENIED " + self.ownNick)
+            except ConnectionError:
+                pass
             self.peerSocket.close()
             self.peerSocket = None
             self.toggleBusy()
@@ -179,16 +188,25 @@ class ControlLink:
     #Función que envía el comando CALL_HOLD al peer
     def hold(self):
         # TODO: Handle errors
-        self.peerSocket.send(b"CALL_HOLD " + self.ownNick)
+        try:
+            self.peerSocket.send(b"CALL_HOLD " + self.ownNick)
+        except ConnectionError:
+            pass
 
     #Función que envía el comando CALL_RESUME al peer
     def resume(self):
         # TODO: Handle errors
-        self.peerSocket.send(b"CALL_RESUME " + self.ownNick)
+        try:
+            self.peerSocket.send(b"CALL_RESUME " + self.ownNick)
+        except ConnectionError:
+            pass
 
     #Función que envía el comando CALL_END al peer y cierra la conexión
     def hang(self):
-        self.peerSocket.send(b"CALL_END " + self.ownNick)
+        try:
+            self.peerSocket.send(b"CALL_END " + self.ownNick)
+        except ConnectionError:
+            pass
         self.peerSocket.close()
         self.peerSocket = None
         self.toggleBusy()
@@ -197,6 +215,7 @@ class ControlLink:
     def toggleBusy(self):
         self.busymtx.acquire()
         self.busy = not self.busy
+        print("El estado de busy es:", self.busy)
         self.busymtx.release()
 
     #Función que devuelve el valor de la flag de ocupado
