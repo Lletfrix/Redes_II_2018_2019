@@ -11,7 +11,8 @@ endpoints = {'create':'users/register', 'userdelete':'users/delete', 'search':'u
               'getpk':'users/getPublicKey', 'up':'files/upload', 'dwn':'files/download',
                'list':'files/list', 'filedelete':'files/delete'}    #Diccionario de endpoints
 up_route = 'Uploads/'
-down_route = 'Downloads/'   #Carpetas de organización de ficheros
+down_route = 'Downloads/'
+local_route = 'Local/' #Carpetas de organización de ficheros
 
 # Función que construye la url completa para cierto endpoint
 # input key Identificador del endpoint en nuestro diccionario
@@ -217,25 +218,28 @@ def get_publicKey(user_id):
 # Función que cifra un fichero para almacenarlo en local
 # input path Ruta del fichero, private_key Clave privada, public_key Clave pública
 def encrypt_routine(path, private_key, public_key):
-    doc = docusign(path)
+    abspath = local_route+path
+    doc = docusign(abspath)
     doc.encrypt(public_key) #Ciframos el fichero
     doc.get_digital_envelope(private_key)
-    f = open(path+'.enc', 'wb')
+    f = open(abspath+'.enc', 'wb')
     f.write(doc.iv+doc.digital_envelope+doc.ciphered)   #Guardamos el fichero cifrado
 
 # Función que firma un fichero para almacenarlo en local
 # input path Ruta del fichero, private_key Clave privada
 def sign_routine(path, private_key):
+    abspath = local_route+path
     doc = docusign(path)
     doc.get_digital_sign(private_key)   # Firmamos el fichero
-    f = open(path+'.sgn', 'wb')
+    f = open(abspath+'.sgn', 'wb')
     f.write(doc.digital_sign+doc.content)   #Guardamos el fichero
 
 # Función que cifra y firma un fichero para almacenarlo en local
 # input path Ruta del fichero, private_key Clave privada, public_key Clave pública
 def enc_sign_routine(path, private_key, public_key):
+    abspath = local_route+path
     print('Obteniendo fichero...', end='')
-    doc = docusign(path)
+    doc = docusign(abspath)
     print('OK')
     #Firmado
     print('Generando firma digital...', end='')
@@ -252,5 +256,5 @@ def enc_sign_routine(path, private_key, public_key):
     #Guardamos fichero
     print('Escribiendo fichero...', end='')
     doc.prepare_upload()
-    f = open(path+'.enc.sgn', 'wb')
+    f = open(abspath+'.enc.sgn', 'wb')
     f.write(doc.ciphered)

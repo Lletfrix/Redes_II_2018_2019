@@ -55,7 +55,9 @@ def load_auth(token):
 if __name__ == '__main__':
 
     #Estructura de parseo de argumentos
-    parser = arg.ArgumentParser(description = 'Cliente para realizar diversas acciones en el servidor SecureBox')
+    parser = arg.ArgumentParser(description = 'Cliente para realizar diversas acciones en el servidor SecureBox.\
+                                            Si tiene dudas sobre el funcionamiento del programa o sobre los argumentos \
+                                            por favor visite https://vega.ii.uam.es/2302-02-19/practica2/wikis/tutorial.')
     parser.add_argument('--source_id', nargs=1) #Indica el remitente del fichero a descargar
     parser.add_argument('--dest_id', nargs=1)   #Indica el destinatario del fichero a subir
     # Ejecutamos uno, y solo un, comando por ejecución del programa
