@@ -17,7 +17,7 @@
 #include "../includes/config.h"
 #include "../includes/error_handling.h"
 
-#define CONFIG_PATH "/config.ini"
+#define CONFIG_PATH "/server.conf"
 
 int sockfd;
 struct thrpool* pool;
