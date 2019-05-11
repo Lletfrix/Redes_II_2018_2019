@@ -188,9 +188,12 @@ if __name__ == '__main__':
 
     #Cifrado en local
     elif args.encrypt:
-        private_key = load_private_key()
-        public_key = load_public_key(args.dest_id[0])   #Obtenemos las claves
-        encrypt_routine(args.encrypt[0], private_key, public_key)
+        if(args.dest_id):
+            private_key = load_private_key()
+            public_key = load_public_key(args.dest_id[0])   #Obtenemos las claves
+            encrypt_routine(args.encrypt[0], private_key, public_key)
+        else:
+            print('El parametro --dest_id es necesario para poder cifrar el fichero')
 
     #Firma en local
     elif args.sign:
@@ -199,9 +202,12 @@ if __name__ == '__main__':
 
     #Firma y cifrado en local
     elif args.enc_sign:
-        private_key = load_private_key()
-        public_key = load_public_key(args.dest_id[0])   #Obtenemos las claves
-        enc_sign_routine(args.enc_sign[0], private_key, public_key)
+        if(args.dest_id):
+            private_key = load_private_key()
+            public_key = load_public_key(args.dest_id[0])   #Obtenemos las claves
+            enc_sign_routine(args.enc_sign[0], private_key, public_key)
+        else:
+            print('El parámetro --dest_id es necesario para poder cifrar el fichero')
 
     #En cualquier otro caso, imprimimos las instrucciones del parser
     else:

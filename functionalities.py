@@ -254,7 +254,8 @@ def enc_sign_routine(path, private_key, public_key):
     doc.get_digital_envelope(public_key)
     print('OK')
     #Guardamos fichero
-    print('Escribiendo fichero...', end='')
+    print('Guardando fichero...', end='')
     doc.prepare_upload()
     f = open(abspath+'.enc.sgn', 'wb')
     f.write(doc.ciphered)
+    print('OK')
