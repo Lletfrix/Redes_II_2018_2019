@@ -10,8 +10,6 @@
 
 #include "../includes/connections.h"
 
-#define MAXQUEUE 20
-
 int tcp_listen(char* if_addr, int port){
     int sockfd;
     struct sockaddr_in sock;

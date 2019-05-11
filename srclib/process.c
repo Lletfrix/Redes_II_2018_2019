@@ -52,6 +52,7 @@ int check_connection(struct phr_header* headers, int num_headers);
 int send_script_res(char* res, int clientfd);
 int __check_ext(const char *check, const char *ext);
 
+
 int process_http(int clientfd){
     const char *method, *path;
     int len, pret, minor_version;
@@ -64,35 +65,25 @@ int process_http(int clientfd){
 
         bzero(buf, MAXBUF);
         len = recv(clientfd, buf, MAXBUF, 0);
+        //If we receive an empty package or recv fails
         if(len <= 0){
             return EXIT_SUCCESS;
         }
         num_headers = sizeof(headers) / sizeof(headers[0]);
+        //Parsing of the request with picoparser
         pret = phr_parse_request(buf, len, &method, &method_len, &path, &path_len,
                                 &minor_version, headers, &num_headers, prevbuflen);
+        //If the request is malformed, 400 Bad Request
         if(pret < 0){
             return bad_request_response(clientfd);
         }
-        if(check_connection(headers, num_headers)){
+        //We close connection if we receive close header or if the version is 1.0
+        if(check_connection(headers, num_headers) || minor_version == 0){
             keep_alive=0;
         }
         sprintf(method_aux, "%.*s", (int)method_len, method);
         sprintf(path_aux, "%.*s", (int)path_len, path);
-
-        //DEBUG
-        /*
-        printf("\033[48;2;%d;%d;%dm", 0, 0, 255);
-        printf("\n\nSoy %ld\n", pthread_self());
-        printf("request is %d bytes long\n", pret);
-        printf("method is %.*s\n", (int)method_len, method);
-        printf("path is %.*s\n", (int)path_len, path);
-        printf("HTTP version is 1.%d\n", minor_version);
-        printf("headers:\n");
-        for (int i = 0; i != num_headers; ++i) {
-            printf("%.*s: %.*s\n", (int)headers[i].name_len, headers[i].name,
-                   (int)headers[i].value_len, headers[i].value);
-        }*/
-        //END DEBUG
+        //Execute the routine of the proper verb
         if(!strcmp(method_aux, "GET")){
             errcode = get_handler(path_aux, headers, num_headers, clientfd);
         }
@@ -103,6 +94,7 @@ int process_http(int clientfd){
         else if(!strcmp(method_aux, "OPTIONS")){
             errcode = options_handler(path_aux, headers, num_headers, clientfd);
         }
+        //If there was a mistake executing the routine, 500 Internal Server Error
         if(errcode){
             keep_alive = 0;
             internal_error_response(clientfd);
@@ -110,13 +102,13 @@ int process_http(int clientfd){
     }
     return method_not_implemented_response(clientfd);
 }
-
+//Function that obtains the size of a file indicated by path
 int get_size(char* path){
     struct stat atrib;
     stat(path, &atrib);
     return atrib.st_size;
 }
-
+//Function that returns the current UTC time in res
 int gmt_time_http(char** res, int tam){
     char timeaux[MAXTIME];
     time_t act = time(0);
@@ -125,7 +117,7 @@ int gmt_time_http(char** res, int tam){
     strcat(*res, timeaux);
     return 1;
 }
-
+//Function that returns the basic headers of a HTTP request in res(Date and Server)
 int general_headers(char** res){
     strcat(*res, "Date: ");
     gmt_time_http(res, MAXAUX);
@@ -135,7 +127,7 @@ int general_headers(char** res){
     strcat(*res, "\r\n");
     return 1;
 }
-
+//Function that returns the last time 'path' file was modified, and returns it into res
 int last_modified_http(char* path, char** res, int tam){
     struct tm tm;
     struct stat atrib;
@@ -144,7 +136,7 @@ int last_modified_http(char* path, char** res, int tam){
     strftime(*res, tam, "%a, %d %b %Y %H:%M:%S %Z", &tm);
     return 1;
 }
-
+//Function that returns the mime type of a given extension(ext) in res
 int get_type(const char* ext, char* res){
     if(!strcmp(ext, ".txt")){
         strcpy(res, "text/plain");
@@ -180,7 +172,7 @@ int get_type(const char* ext, char* res){
     }
     return 0;
 }
-
+//Function that processes a HTTP GET request
 int get_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd){
     int size;
     char abspath[MAXPATH]={0}, sizestr[MAXSIZE], script_ext[MAXSCRIPT];
@@ -211,6 +203,7 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
     ext = strrchr(path, '.');
     //Gets type of request
     if(!get_type(ext, type) && !strrchr(ext,'?')){
+        //404 not found if we dont support the extension and it is not a script
         not_found_response(clientfd);
         free(aux);
         free(response);
@@ -219,6 +212,7 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
     }
     //Launch if script
     if(strrchr(ext, '?')){
+        //Check if it is Python or PHP, otherwise 404
         sprintf(script_ext, "%.*s", (int)(strrchr(ext, '?') - ext), ext);
         if(!strcmp(script_ext, ".py") || !strcmp(script_ext, ".php")){
             result = calloc(MAXRESULT, sizeof(char));
@@ -228,6 +222,7 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
                 free(type);
                 return EXIT_FAILURE;
             }
+            //Execute the script and send the results via HTTP
             run_script(abspath, NULL, result);
             send_script_res(result, clientfd);
             free(result);
@@ -249,11 +244,10 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
         free(type);
         return EXIT_SUCCESS;
     }
-    //Builds header
-    //TODO: Change this for function __build_get_header(response, );
+    //Build response
     size = get_size(abspath);
     strcat(response, "HTTP/1.1 200 OK\r\n");
-    /*HEADERS*/
+    //Headers
     general_headers(&aux);
     strcat(response, aux);
     strcat(response, "Last-Modified: ");
@@ -269,7 +263,7 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
     strcat(response, "\r\n\r\n");
     //Sends header
     send(clientfd, response, strlen(response), 0);
-    /*BODY*/
+    //Body
     //Sends chunked body
     while(offset < size){
         sendfile(clientfd, filefd, &offset, CHUNK);
@@ -282,7 +276,7 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
         close(filefd);
     return EXIT_SUCCESS;
 }
-
+//Function that processes an OPTION HTTP Request
 int options_handler(char* path, struct phr_header* headers, size_t num_headers, int clientfd){
     char* response;
     char* aux;
@@ -295,6 +289,7 @@ int options_handler(char* path, struct phr_header* headers, size_t num_headers, 
         free(response);
         return EXIT_FAILURE;
     }
+    //Build and send HTTP Response
     strcat(response, "HTTP/1.1 200 OK\r\n");
     general_headers(&aux);
     strcat(response, aux);
@@ -303,22 +298,24 @@ int options_handler(char* path, struct phr_header* headers, size_t num_headers, 
     send(clientfd, response, strlen(response), 0);
     return EXIT_SUCCESS;
 }
-
+//Function that processes a POST HTTP Request
 int post_handler(char* path_aux, struct phr_header* headers, size_t num_headers, int clientfd, char* body){
     char* result;
     char abspath[MAXPATH];
+    //Go to the original directory
     sprintf(abspath, "%s", config_get("absdir"));
-    strcat(abspath, path_aux);//path.ext?dakfjdks
+    strcat(abspath, path_aux); //Add the path of the requested script
     result = calloc(MAXRESULT, sizeof(char));
     if(!result){
         return EXIT_FAILURE;
     }
+    //Run script and send results via HTTP
     run_script(abspath, body, result);
     send_script_res(result, clientfd);
     free(result);
     return EXIT_SUCCESS;
 }
-
+//Function that builds and sends a 404 customizable response
 int not_found_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
     char sizestr[MAXSIZE];
@@ -328,9 +325,11 @@ int not_found_response(int clientfd){
         return EXIT_FAILURE;
     }
     strcat(response, "HTTP/1.1 404 Not Found\r\n");
+    //Add the common headers
     general_headers(&response);
     strcat(response, "Content-Length: ");
     html404 = open(config_get("dir404"), O_RDONLY);
+    //If there is no 404 file, we send just the headers
     if(html404 < 0){
         strcat(response, "0\r\n\r\n");
     }
@@ -341,32 +340,36 @@ int not_found_response(int clientfd){
         strcat(response, "\r\n");
         strcat(response, "Content-Type: text/html\r\n\r\n");
     }
+    //Send response
     send(clientfd, response, strlen(response), 0);
-    //printf("\n%s\n", response);
     free(response);
+    //Send custom 404 page
     if(html404 >= 0){
         while(offset < size){
             sendfile(clientfd, html404, &offset, CHUNK);
         }
     }
+    //Close the descriptor
     if(html404 >= 0)
         close(html404);
     return EXIT_SUCCESS;
 }
-
+//Function that builds and sends a 501 Method Not Implemented response
 int method_not_implemented_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
     if(!response){
         return EXIT_FAILURE;
     }
     strcat(response, "HTTP/1.1 501 Not Implemented\r\n");
+    //Common headers
     general_headers(&response);
     strcat(response, "\r\n");
+    //Send response
     send(clientfd, response, strlen(response), 0);
     free(response);
     return EXIT_SUCCESS;
 }
-
+//Function that builds and sends a 400 Bad Request response
 int bad_request_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
     if(!response){
@@ -379,7 +382,7 @@ int bad_request_response(int clientfd){
     free(response);
     return EXIT_SUCCESS;
 }
-
+//Function that builds and sends a customizable 500 Internal Server Error response
 int internal_error_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
     char sizestr[MAXSIZE];
@@ -389,10 +392,13 @@ int internal_error_response(int clientfd){
         return EXIT_FAILURE;
     }
     strcat(response, "HTTP/1.1 500 Internal Server Error\r\n");
+    //Common headers
     general_headers(&response);
     strcat(response, "Content-Length: ");
+    //Try to open 500 custom page
     html500 = open(config_get("dir500"), O_RDONLY);
     if(html500 < 0){
+        //If the file doesn't exist, we send just the headers
         strcat(response, "0\r\n\r\n");
     }
     else{
@@ -402,9 +408,10 @@ int internal_error_response(int clientfd){
         strcat(response, "\r\n");
         strcat(response, "Content-Type: text/html\r\n\r\n");
     }
+    //Send the response
     send(clientfd, response, strlen(response), 0);
-    //printf("\n%s\n", response);
     free(response);
+    //Send the custom page
     if(html500 >= 0){
         while(offset < size){
             sendfile(clientfd, html500, &offset, CHUNK);
@@ -415,7 +422,7 @@ int internal_error_response(int clientfd){
     free(response);
     return EXIT_SUCCESS;
 }
-
+//Function that executes the requested script and writes its output in an aux file
 int run_script(char* abspath, char* body, char* result){
     char* ext;
     char* param;
@@ -424,7 +431,7 @@ int run_script(char* abspath, char* body, char* result){
     FILE* pipe;
     FILE* fp;
     ext = strrchr(abspath, '.');
-
+    //Check if we support the language
     if(!__check_ext(ext, ".py"))
         sprintf(command, "python3");
     else if(!__check_ext(ext, ".php"))
@@ -437,24 +444,30 @@ int run_script(char* abspath, char* body, char* result){
 
     strcat(command, " ");
     strcat(command, abspath);
-
+    //See if it has any argument
     if(body){
+        //38D7EA4C67FFF is the biggest thread identifier, we take it as a reference
+        //File in which the system will write the output
         name = calloc(1, MAXPATH/4 + strlen("out38D7EA4C67FFF.txt\0"));
         snprintf(name, MAXPATH/4 + strlen("out38D7EA4C67FFF.txt"), "%s/out%lx.txt", config_get("cwd") ,pthread_self());
         fp = fopen(name, "w");
+        //fopen debugging by syslog
         if(!fp){
             syslog(LOG_DEBUG, "Couldn't open file: %s. Are you sure you are running this with super user rights??", name);
             free(name);
             return EXIT_FAILURE;
         }
+        //Finish the build of the command
         fwrite(body, sizeof(char), strlen(body), fp);
         fclose(fp);
         strcat(command, " < ");
         strcat(command,  name);
         free(name);
     }else{
+        //No arguments
         strcat(command, " < /dev/null");
     }
+    //Execute the script
     syslog(LOG_DEBUG, "%lu: Going to run command: %s", pthread_self(), command);
     pipe = popen(command, "r");
     if(!pipe) EXIT_FAILURE;
@@ -462,7 +475,7 @@ int run_script(char* abspath, char* body, char* result){
     pclose(pipe);
     return EXIT_SUCCESS;
 }
-
+//Function that compares two strings(In particular, two extensions)
 int __check_ext(const char *check, const char *ext){
     while(*check && *ext){
         if(*check != *ext)
@@ -471,14 +484,15 @@ int __check_ext(const char *check, const char *ext){
     }
     return EXIT_SUCCESS;
 }
-
+//Function that checks whether a file exists or not
 int __file_exists(char *name){
     FILE *fp;
     if(!(fp = fopen(name, "r"))) return EXIT_FAILURE;
     fclose(fp);
     return EXIT_SUCCESS;
 }
-
+//Function that checks if there is a header telling us to close the connection
+//after processing the request
 int check_connection(struct phr_header* headers, int num_headers){
     int i;
     char header[MAXHEADERS], value[MAXVALUE];
@@ -493,7 +507,7 @@ int check_connection(struct phr_header* headers, int num_headers){
     }
     return 0;
 }
-
+//Function that sends the result of the script executed before we call this to the client
 int send_script_res(char* res, int clientfd){
     char response[MAXRESPONSE], http_result[MAXRESULT], len[MAXLEN];
     char* aux;
@@ -501,9 +515,11 @@ int send_script_res(char* res, int clientfd){
     if(!aux){
         return EXIT_FAILURE;
     }
+    //HTTP formatted result, not just plain
     sprintf(http_result, "<!DOCTYPE html><html><body>");
     strcat(http_result, res);
     strcat(http_result, "</body></html>");
+    //HTTP response
     sprintf(response, "HTTP/1.1 200 OK\r\n");
     general_headers(&aux);
     strcat(response, aux);
@@ -514,6 +530,7 @@ int send_script_res(char* res, int clientfd){
     strcat(response, "\r\nContent-Type: text/html");
     strcat(response, "\r\n\r\n");
     strcat(response, http_result);
+    //Send full response
     if(send(clientfd, response, strlen(response), 0) < 0){
         return EXIT_FAILURE;
     }
