@@ -34,4 +34,4 @@ test-http-request.o: test-http-request.c
 	$(CC) $(CFLAGS) -c $? $(LFLAGS)
 
 clean:
-	rm *.o
+	rm *.o $(TEST)
