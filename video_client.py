@@ -261,19 +261,19 @@ class VideoClient(object):
         inetFrame, guiFrame = imgManager.prepareFrame(frame)    #Lo preparamos para mostrar y enviar
 
         self.app.setImageData("video", guiFrame, fmt = 'PhotoImage')    # Lo mostramos en el GUI
-        self.currtime = time.time()
-        diff = self.currtime - self.oldtime
-        self.oldtime = self.currtime
+        #self.currtime = time.time()
+        #diff = self.currtime - self.oldtime
+        #self.oldtime = self.currtime
 
-        print("He capturado un frame, la ultima llamada fue hace:",1000*diff, "ms")
+        #print("He capturado un frame, la ultima llamada fue hace:",1000*diff, "ms")
 
         # Lo mandamos a enviar por UDP
         if not self.paused: #Si la llamada no está pausada
             try:
-                print("He metido un frame en la cola")
+                #print("He metido un frame en la cola")
                 self.bufferOut.put(inetFrame, block=False)  #Metemos el frame en el buffer de envio
             except queue.Full:  #Si la cola está llena, desechamos el frame
-                print("La cola de envío está llena")
+                #print("La cola de envío está llena")
                 pass
     # Establece la resolución de la imagen capturada
     def setImageResolution(self, resolution):   #TODO
