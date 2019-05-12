@@ -78,8 +78,8 @@ int main(int argc, char **argv){
     }
     config_set("cwd", cwd);
     syslog(LOG_INFO, "%s", "Creando pool de hilos.");
-    pool = thrpool_new(config_get_int("maxthreads"), func);
-
+    pool = thrpool_new(config_get_int("max_clients"), func);
+    port = config_get_int("listening_port");
     syslog(LOG_INFO, "%s%s%s%d.", "Escuchando en la ip: ", ip, " con puerto ", port);
     sockfd = tcp_listen(ip, port);
 
@@ -87,7 +87,7 @@ int main(int argc, char **argv){
     signal(SIGUSR1, handle_sigusr1);
 
     syslog(LOG_INFO, "%s", "Lanzando pool de hilos.");
-    thrpool_execute(pool, config_get_int("maxthreads"));
+    thrpool_execute(pool, config_get_int("max_clients"));
     for(;;) pause();
     return 0;
 }

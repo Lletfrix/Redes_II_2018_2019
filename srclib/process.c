@@ -123,7 +123,7 @@ int general_headers(char** res){
     gmt_time_http(res, MAXAUX);
     strcat(*res, "\r\n");
     strcat(*res, "Server: ");
-    strcat(*res, config_get("svrname"));
+    strcat(*res, config_get("server_signature"));
     strcat(*res, "\r\n");
     return 1;
 }
@@ -195,7 +195,8 @@ int get_handler(char* path, struct phr_header* headers, size_t num_headers, int 
         return EXIT_FAILURE;
     }
     //Build path with index.html
-    strcat(abspath, config_get("absdir"));
+    strcat(abspath, config_get("cwd"));
+    strcat(abspath, config_get("server_root"));
     if(!strcmp(path, "/")){
         strcat(path, "index.html");
     }
@@ -303,7 +304,9 @@ int post_handler(char* path_aux, struct phr_header* headers, size_t num_headers,
     char* result;
     char abspath[MAXPATH];
     //Go to the original directory
-    sprintf(abspath, "%s", config_get("absdir"));
+    sprintf(abspath, "%s", config_get("cwd"));
+    strcat(abspath, config_get("server_root"));
+    //sprintf(abspath, "%s", config_get("server_root"));
     strcat(abspath, path_aux); //Add the path of the requested script
     result = calloc(MAXRESULT, sizeof(char));
     if(!result){
@@ -319,6 +322,7 @@ int post_handler(char* path_aux, struct phr_header* headers, size_t num_headers,
 int not_found_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
     char sizestr[MAXSIZE];
+    char abspath[MAXPATH]={0};
     int html404, size;
     off_t offset = 0;
     if(!response){
@@ -328,13 +332,19 @@ int not_found_response(int clientfd){
     //Add the common headers
     general_headers(&response);
     strcat(response, "Content-Length: ");
-    html404 = open(config_get("dir404"), O_RDONLY);
+
+    strcat(abspath, config_get("cwd"));
+    strcat(abspath, config_get("server_root"));
+    strcat(abspath, config_get("404file"));
+
+    html404 = open(abspath, O_RDONLY);
     //If there is no 404 file, we send just the headers
     if(html404 < 0){
         strcat(response, "0\r\n\r\n");
+        syslog(LOG_INFO, "No 404 file found on path: %s", abspath);
     }
     else{
-        size = get_size(config_get("dir404"));
+        size = get_size(abspath);
         sprintf(sizestr, "%d", size);
         strcat(response, sizestr);
         strcat(response, "\r\n");
@@ -387,6 +397,7 @@ int internal_error_response(int clientfd){
     char* response = calloc(MAXRESPONSE, sizeof(char));
     char sizestr[MAXSIZE];
     int html500, size;
+    char abspath[MAXPATH];
     off_t offset = 0;
     if(!response){
         return EXIT_FAILURE;
@@ -396,13 +407,18 @@ int internal_error_response(int clientfd){
     general_headers(&response);
     strcat(response, "Content-Length: ");
     //Try to open 500 custom page
-    html500 = open(config_get("dir500"), O_RDONLY);
+    strcat(abspath, config_get("cwd"));
+    strcat(abspath, config_get("server_root"));
+    strcat(abspath, config_get("500file"));
+
+
+    html500 = open(abspath, O_RDONLY);
     if(html500 < 0){
         //If the file doesn't exist, we send just the headers
         strcat(response, "0\r\n\r\n");
     }
     else{
-        size = get_size(config_get("dir500"));
+        size = get_size(abspath);
         sprintf(sizestr, "%d", size);
         strcat(response, sizestr);
         strcat(response, "\r\n");
@@ -449,7 +465,7 @@ int run_script(char* abspath, char* body, char* result){
         //38D7EA4C67FFF is the biggest thread identifier, we take it as a reference
         //File in which the system will write the output
         name = calloc(1, MAXPATH/4 + strlen("out38D7EA4C67FFF.txt\0"));
-        snprintf(name, MAXPATH/4 + strlen("out38D7EA4C67FFF.txt"), "%s/out%lx.txt", config_get("cwd") ,pthread_self());
+        snprintf(name, MAXPATH/4 + strlen("out38D7EA4C67FFF.txt"), "%s%sout%lx.txt", config_get("cwd"), config_get("temp_dir"),pthread_self());
         fp = fopen(name, "w");
         //fopen debugging by syslog
         if(!fp){

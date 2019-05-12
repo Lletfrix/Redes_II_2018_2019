@@ -24,6 +24,14 @@ src/server.o: src/server.c
 makelib:
 	cd srclib && $(MAKE)
 
+test: makelib
+	cd tests && $(MAKE)
+
 clean:
+	cd srclib && make clean && cd ..
 	rm src/*.o server
-	sudo rm ./out*.txt
+	rm lib/*.a
+	sudo rm assets/temp/out*.txt
+
+clean_test:
+	cd tests && make clean
