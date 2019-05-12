@@ -17,6 +17,7 @@ class ControlLink:
         self.usrCalled = None   #Nick del usuario con quien nos conectamos
         # Socket del servidor TCP
         self.svSocket = sck.socket(sck.AF_INET, sck.SOCK_STREAM)
+        self.svSocket.setsockopt(sck.SOL_SOCKET, sck.SO_REUSEADDR, 1)
         # Thread del servidor TCP
         self.svThr = threading.Thread(target=self.tcpSv, daemon=True)
 
@@ -74,7 +75,7 @@ class ControlLink:
             self.peerSocket.send(b"CALLING " + self.ownNick + b" " + str(self.udpInPort).encode('ascii'))
             resp = self.peerSocket.recv(RECV_SZ) # TODO: Handle invalid resp
             (cmd, nick, port) = resp.decode('ascii').split(' ')
-        except (sck.timeout, ConnectionError, ValueError):
+        except (sck.timeout, ConnectionError, ValueError, OSError):
             self.toggleBusy()
             return False #Si ha habido errores de socket o conexión, error
         #Si nos responde con CALL_ACEPTED, establecemos la comunicación
