@@ -20,4 +20,4 @@ Los autores de este proyecto son:
 * [Lib](https://vega.ii.uam.es/2302-02-19/practica1/tree/master/lib): Directorio donde se compilan las librerías
 * [Src](https://vega.ii.uam.es/2302-02-19/practica1/tree/master/src): Contiene los fuentes del programa
 * [Srclib](https://vega.ii.uam.es/2302-02-19/practica1/tree/master/srclib): Contiene los fuentes de las librerías
-* [Tests](https://vega.ii.uam.es/2302-02-19/practica1/tree/master/srclib): Contiene distintos unit-tests de las librerías
+* [Tests](https://vega.ii.uam.es/2302-02-19/practica1/tree/master/tests): Contiene distintos unit-tests de las librerías
