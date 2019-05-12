@@ -4,7 +4,7 @@ II de la UAM.
 
 ## Funcionalidad
 La funcionalidad de esta práctica es ejercer de servidor concurrente HTTP en C en el
-que se aloja una página web contenida en el directorio /www.
+que se aloja una página web contenida en el directorio assets/www.
 Puedes encontrar muchos más detalles de funcionalidad e implementación en
 nuestra [Wiki](https://vega.ii.uam.es/2302-02-19/practica1/wikis/home).
 
