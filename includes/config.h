@@ -16,11 +16,10 @@
 #define __CONFIG_H__
 /** @defgroup config Config module
 *
-* This module provides a common interface to store general settings about the
-* game. Configuration items can be stored dynamically or be loaded from a
-* file. All configuration options are available throughout the game, to every
-* entity and every lib file, so take care of avoiding key collisions, for
-* example by prefixing your keys.
+ * This module provides a common interface to store general settings. 
+ * Configuration items can be stored dynamically or be loaded from a file.
+ * All configuration options are available throughout every lib file, so take 
+ * care of avoiding key collisions, for example by prefixing your keys.
 */
 
 /**
