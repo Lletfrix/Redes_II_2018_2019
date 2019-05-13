@@ -212,7 +212,6 @@ class ControlLink:
     def toggleBusy(self):
         self.busymtx.acquire()
         self.busy = not self.busy
-        print("El estado de busy es:", self.busy)
         self.busymtx.release()
 
     #Función que devuelve el valor de la flag de ocupado
