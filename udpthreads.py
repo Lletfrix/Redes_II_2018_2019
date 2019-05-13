@@ -46,7 +46,6 @@ class UdpThreads:
                 #self.lockOut.release()  #Subimos el mutex
                 continue
             try:
-                print("He enviado un frame")
                 self.udpOutSocket.sendto(data, self.sendTo) #Enviamos el frame
             except sck.error:   #Si hay algún error en el socket
                 #self.lockOut.release()  #Subimos el mutex
