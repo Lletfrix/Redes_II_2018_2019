@@ -156,8 +156,6 @@ class VideoClient(object):
                 self.app.infoBox("Error", "No ha sido posible realizar la conexión.")
             else:
                 self.startCall()    #Si hemos podido conectar, comenzamos la llamada
-            #tcpConnections.call(outAddr)
-            #udpConn.start(peerAddr, peerPort)
 
         elif button == "Conectar":  #Rutina de conexión
             ds_sock.sendall(get_users)
@@ -216,7 +214,7 @@ class VideoClient(object):
             else:
                 self.tcpCtrl.toggleBusy()
             if self.paused: #Si estaba en pausa la llamada
-                self.udpConn.resume()    #TODO
+                self.udpConn.resume()
                 self.app.setButton("Pausar", "Pausar")  #Cambiamos el botón a Pausar para la siguiente llamada
 
             self.paused = True #Cambiamos la flag de pausa
@@ -247,11 +245,10 @@ class VideoClient(object):
                 self.app.setImageData("peerCam", guiFrame, fmt = 'PhotoImage')
         except queue.Empty:
             pass
-        cmd, flag = self.tcpCtrl.check() #TODO
+        cmd, flag = self.tcpCtrl.check()
         if cmd is not None:
             if flag != self.paused:
                 self.videoCallback(cmd, False)
-        #show
 
     # Función que captura el frame a mostrar en cada momento
     def capturaVideo(self):
@@ -261,19 +258,12 @@ class VideoClient(object):
         inetFrame, guiFrame = imgManager.prepareFrame(frame)    #Lo preparamos para mostrar y enviar
 
         self.app.setImageData("video", guiFrame, fmt = 'PhotoImage')    # Lo mostramos en el GUI
-        #self.currtime = time.time()
-        #diff = self.currtime - self.oldtime
-        #self.oldtime = self.currtime
-
-        #print("He capturado un frame, la ultima llamada fue hace:",1000*diff, "ms")
 
         # Lo mandamos a enviar por UDP
         if not self.paused: #Si la llamada no está pausada
             try:
-                #print("He metido un frame en la cola")
                 self.bufferOut.put(inetFrame, block=False)  #Metemos el frame en el buffer de envio
             except queue.Full:  #Si la cola está llena, desechamos el frame
-                #print("La cola de envío está llena")
                 pass
     # Establece la resolución de la imagen capturada
     def setImageResolution(self, resolution):   #TODO
@@ -308,8 +298,6 @@ class VideoClient(object):
         self.udpConn.start(self.tcpCtrl.getDest())  #iniciar los hilos de UDP
         self.paused = False #Inicializamos la flag de pausa
         self.app.setButton("Pausar", "Pausar")  #Inicializamos el botón de pausa
-        #self.udpThreads.start()
-        #self.app.openSubWindow("inVideo")
         self.app.showSubWindow("inVideo")   #Mostramos la SubWindow del video entrante
         #espera por feedback de usuario
         #si hace pause - llamar a la funcion del modelo que envia la señal de pause
