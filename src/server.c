@@ -29,12 +29,13 @@ void handle_sigint(int sig)
     thrpool_terminate(pool);
     thrpool_free(pool);
     close_connection(sockfd);
+    closelog();
 
     int n_fd = getdtablesize();
     for(int i = 3; i < n_fd; ++i){
         close(i);
     }
-
+    config_destroy();
     //config_destroy(); TODO: fix this
     exit(EXIT_SUCCESS);
 }
