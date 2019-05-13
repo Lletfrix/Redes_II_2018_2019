@@ -253,6 +253,11 @@ class VideoClient(object):
     # Función que captura el frame a mostrar en cada momento
     def capturaVideo(self):
 
+        self.currtime = time.time()
+        diff = self.currtime - self.oldtime
+        self.oldtime = self.currtime
+        fps = int(round(1/diff))
+        self.app.setStatusbar("FPS: "+str(fps), 0)
         ret, frame = self.cap.read() # Capturamos un frame de la cámara o del vídeo
 
         inetFrame, guiFrame = imgManager.prepareFrame(frame)    #Lo preparamos para mostrar y enviar
