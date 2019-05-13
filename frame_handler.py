@@ -10,7 +10,6 @@ lQ = (160, 120)
 class FrameHandler:
     def __init__(self):
         self.fps = 25   #FPS de video recibido
-        #self.res = "HIGH"
         self.res = str(hQ[0])+"x"+str(hQ[1])   #Calidad del video recibido
         self.ratio = 50    #Ratio de compresión
         self.order = 0  #Número de secuencia
