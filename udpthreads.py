@@ -7,7 +7,7 @@ class UdpThreads:
         # Información de la conexión
         self.ip = None  #Ip a la que bindear nuestros sockets
         self.inPort = None  #Puerto UDP de recepción
-        self.outPort = None #TODO
+        self.outPort = None
         self.alive = None   #Indicador del estado de la llamada
         # Buffers
         self.bufferIn = bufferIn
